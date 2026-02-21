@@ -1,0 +1,20 @@
+{
+  "nose": [0, 1.5, 0.1],
+  "neck": [0, 1.35, 0],
+  "right_shoulder": [-0.2, 1.35, 0],
+  "right_elbow": [-0.3, 1.0, 0],
+  "right_wrist": [-0.4, 0.7, 0],
+  "left_shoulder": [0.2, 1.35, 0],
+  "left_elbow": [0.3, 1.0, 0],
+  "left_wrist": [0.4, 0.7, 0],
+  "right_hip": [-0.15, 0.8, 0],
+  "right_knee": [-0.15, 0.4, 0],
+  "right_ankle": [-0.15, 0.0, 0],
+  "left_hip": [0.15, 0.8, 0],
+  "left_knee": [0.15, 0.4, 0],
+  "left_ankle": [0.15, 0.0, 0],
+  "right_eye": [-0.05, 1.55, 0.1],
+  "left_eye": [0.05, 1.55, 0.1],
+  "right_ear": [-0.1, 1.5, 0],
+  "left_ear": [0.1, 1.5, 0]
+}
