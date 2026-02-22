@@ -11,6 +11,16 @@ A tool for viewing and manipulating 3D skeletal poses.
 2. Run the app:
    `npm run dev`
 
+## Available Poses
+
+| Pose | Description |
+|------|-------------|
+| **Standing** | Default upright pose |
+| **T-Pose** | Arms extended horizontally |
+| **Action Hero** | Dynamic lunge with raised arm |
+| **Sitting** | Seated with knees bent |
+| **Walking** | Mid-stride walking with arm swing |
+
 ## Output Images
 <img width="2485" height="1695" alt="image" src="https://github.com/user-attachments/assets/5b40329b-4bcd-4b96-8ebd-e2fb3d28b4a0" />
 <img width="2485" height="1695" alt="image" src="https://github.com/user-attachments/assets/37ad1bbc-2d8d-4d1c-8876-08e1431253e7" />
