@@ -125,12 +125,14 @@ function init() {
     canvas.addEventListener('pointerleave', onPointerUp);
 
     // UI Buttons
-    document.getElementById('btn-load').addEventListener('click', loadPose);
+    document.getElementById('pose-select').addEventListener('change', (e) => {
+        loadPose(e.target.value);
+    });
     document.getElementById('btn-export-png').addEventListener('click', exportPNG);
     document.getElementById('btn-export-json').addEventListener('click', exportJSON);
 
     // Load initial pose
-    loadPose();
+    loadPose('sample');
 }
 
 function createSkeleton() {
@@ -307,9 +309,9 @@ function animate() {
 
 // --- Actions ---
 
-async function loadPose() {
+async function loadPose(poseName = 'sample') {
     try {
-        const response = await fetch('/poses/sample.json');
+        const response = await fetch(`/poses/${poseName}.json`);
         if (!response.ok) throw new Error('Failed to load pose');
         const data = await response.json();
         

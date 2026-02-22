@@ -94,16 +94,60 @@
         .btn:hover svg {
             opacity: 1;
         }
+        .pose-selector-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 4px 0 0 0;
+        }
+        .pose-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 10px 36px 10px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+            width: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231d1d1f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+        .pose-select:hover {
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .pose-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+        }
+        .divider {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.06);
+            margin: 4px 0;
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
     <div class="ui-panel">
         <h1 class="ui-title">Pose Editor</h1>
-        <button class="btn" id="btn-load">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Load Pose
-        </button>
+        <p class="pose-selector-label">Select Pose</p>
+        <select class="pose-select" id="pose-select">
+            <option value="sample">Standing</option>
+            <option value="t-pose">T-Pose</option>
+            <option value="action-hero">Action Hero</option>
+            <option value="sitting">Sitting</option>
+            <option value="walking">Walking</option>
+        </select>
+        <div class="divider"></div>
         <button class="btn" id="btn-export-png">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
             Export PNG
