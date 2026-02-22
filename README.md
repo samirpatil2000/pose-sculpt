@@ -2,19 +2,22 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Pose Sculpt
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/d418f4e8-4b6f-46a3-93fc-3305313c8ae7
+A tool for viewing and manipulating 3D skeletal poses.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Run the app:
    `npm run dev`
+
+## Output Images
+<img width="2485" height="1695" alt="image" src="https://github.com/user-attachments/assets/5b40329b-4bcd-4b96-8ebd-e2fb3d28b4a0" />
+<img width="2485" height="1695" alt="image" src="https://github.com/user-attachments/assets/37ad1bbc-2d8d-4d1c-8876-08e1431253e7" />
+
+## Platform Images
+<img width="1243" height="847" alt="image" src="https://github.com/user-attachments/assets/c13e9208-033a-4e42-835a-b788f6e045de" />
