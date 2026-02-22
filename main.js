@@ -38,9 +38,26 @@ const offset = new THREE.Vector3();
 const targetScales = new Map();
 const targetColors = new Map();
 
-const COLOR_NORMAL = new THREE.Color(0x888888);
-const COLOR_HOVER = new THREE.Color(0xaaaaaa);
-const COLOR_ACTIVE = new THREE.Color(0x0071e3);
+// --- Color Utilities ---
+function getJointColor(index) {
+    const colors = [
+        0xff00ff, 0x0000ff, 0xff4500, 0xffd700, 0xff8c00, 
+        0xadff2f, 0x32cd32, 0x00ff00, 0x00ffff, 0x007fff, 
+        0x4b0082, 0x00fa9a, 0x00ced1, 0x00ffff, 0xff00ff, 
+        0xff00ff, 0xff00ff, 0xff00ff
+    ];
+    return colors[index] || 0xffffff;
+}
+
+function getConnectionColor(index) {
+    if (index === 0) return 0xff00ff; // neck
+    if (index >= 1 && index <= 3) return 0xff8c00; // r_arm
+    if (index >= 4 && index <= 6) return 0x32cd32; // l_arm
+    if (index >= 7 && index <= 9) return 0x007fff; // r_leg
+    if (index >= 10 && index <= 12) return 0x00ced1; // l_leg
+    if (index >= 13) return 0xff00ff; // face
+    return 0xffffff;
+}
 
 // --- Init ---
 init();
@@ -117,41 +134,42 @@ function init() {
 }
 
 function createSkeleton() {
-    // Materials
-    const jointMaterial = new THREE.MeshStandardMaterial({ 
-        color: COLOR_NORMAL, 
-        roughness: 0.3, 
-        metalness: 0.2 
-    });
-    const boneMaterial = new THREE.LineBasicMaterial({ 
-        color: 0xcccccc,
-        transparent: true,
-        opacity: 0.6
-    });
-
     // Create Joints
-    const jointGeometry = new THREE.SphereGeometry(0.03, 32, 32);
+    const jointGeometry = new THREE.SphereGeometry(0.04, 32, 32);
     for (let i = 0; i < JOINT_NAMES.length; i++) {
-        const joint = new THREE.Mesh(jointGeometry, jointMaterial.clone());
+        const baseColor = new THREE.Color(getJointColor(i));
+        const jointMaterial = new THREE.MeshStandardMaterial({ 
+            color: baseColor, 
+            roughness: 0.3, 
+            metalness: 0.2 
+        });
+        const joint = new THREE.Mesh(jointGeometry, jointMaterial);
         // Default position
         joint.position.set(0, 1.5 - i * 0.05, 0);
         joint.userData.index = i;
         joint.userData.name = JOINT_NAMES[i];
+        joint.userData.baseColor = baseColor;
         skeletonGroup.add(joint);
         joints.push(joint);
         
         targetScales.set(joint, 1.0);
-        targetColors.set(joint, COLOR_NORMAL.clone());
+        targetColors.set(joint, baseColor.clone());
     }
 
     // Create Bones
+    const boneGeometry = new THREE.CylinderGeometry(0.015, 0.015, 1, 8);
+    boneGeometry.rotateX(Math.PI / 2);
+
     for (let i = 0; i < CONNECTIONS.length; i++) {
         const [idxA, idxB] = CONNECTIONS[i];
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(6);
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const color = getConnectionColor(i);
+        const boneMaterial = new THREE.MeshStandardMaterial({ 
+            color: color,
+            roughness: 0.4,
+            metalness: 0.1 
+        });
         
-        const bone = new THREE.Line(geometry, boneMaterial);
+        const bone = new THREE.Mesh(boneGeometry, boneMaterial);
         skeletonGroup.add(bone);
         bones.push({ line: bone, idxA, idxB });
     }
@@ -160,18 +178,19 @@ function createSkeleton() {
 
 function updateBones() {
     for (let i = 0; i < bones.length; i++) {
-        const { line, idxA, idxB } = bones[i];
-        const positions = line.geometry.attributes.position.array;
+        const { line: mesh, idxA, idxB } = bones[i];
+        const pA = joints[idxA].position;
+        const pB = joints[idxB].position;
         
-        positions[0] = joints[idxA].position.x;
-        positions[1] = joints[idxA].position.y;
-        positions[2] = joints[idxA].position.z;
-        
-        positions[3] = joints[idxB].position.x;
-        positions[4] = joints[idxB].position.y;
-        positions[5] = joints[idxB].position.z;
-        
-        line.geometry.attributes.position.needsUpdate = true;
+        const distance = pA.distanceTo(pB);
+        if (distance < 0.001) {
+            mesh.visible = false;
+        } else {
+            mesh.visible = true;
+            mesh.position.copy(pA).lerp(pB, 0.5);
+            mesh.lookAt(pB);
+            mesh.scale.set(1, 1, distance);
+        }
     }
 }
 
@@ -202,7 +221,7 @@ function onPointerDown(event) {
         }
         
         targetScales.set(selectedJoint, 1.3);
-        targetColors.set(selectedJoint, COLOR_ACTIVE.clone());
+        targetColors.set(selectedJoint, new THREE.Color(0xffffff));
         
         document.body.style.cursor = 'grabbing';
     }
@@ -228,19 +247,19 @@ function onPointerMove(event) {
             if (hoveredJoint !== joint) {
                 if (hoveredJoint && hoveredJoint !== selectedJoint) {
                     targetScales.set(hoveredJoint, 1.0);
-                    targetColors.set(hoveredJoint, COLOR_NORMAL.clone());
+                    targetColors.set(hoveredJoint, hoveredJoint.userData.baseColor.clone());
                 }
                 hoveredJoint = joint;
                 if (hoveredJoint !== selectedJoint) {
                     targetScales.set(hoveredJoint, 1.15);
-                    targetColors.set(hoveredJoint, COLOR_HOVER.clone());
+                    targetColors.set(hoveredJoint, hoveredJoint.userData.baseColor.clone().addScalar(0.2));
                 }
             }
         } else {
             document.body.style.cursor = 'default';
             if (hoveredJoint && hoveredJoint !== selectedJoint) {
                 targetScales.set(hoveredJoint, 1.0);
-                targetColors.set(hoveredJoint, COLOR_NORMAL.clone());
+                targetColors.set(hoveredJoint, hoveredJoint.userData.baseColor.clone());
                 hoveredJoint = null;
             }
         }
@@ -250,7 +269,7 @@ function onPointerMove(event) {
 function onPointerUp() {
     if (selectedJoint) {
         targetScales.set(selectedJoint, hoveredJoint === selectedJoint ? 1.15 : 1.0);
-        targetColors.set(selectedJoint, hoveredJoint === selectedJoint ? COLOR_HOVER.clone() : COLOR_NORMAL.clone());
+        targetColors.set(selectedJoint, hoveredJoint === selectedJoint ? selectedJoint.userData.baseColor.clone().addScalar(0.2) : selectedJoint.userData.baseColor.clone());
         selectedJoint = null;
     }
     isDragging = false;
