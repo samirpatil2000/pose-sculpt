@@ -108,10 +108,10 @@ export function usePoseEditor(containerRef) {
       bones.push({ mesh, start: conn[0], end: conn[1] });
     });
 
-    // Store in ref for methods
+    // Store in ref
     stateRef.current = { scene, camera, renderer, joints, bones, selectedJoint: null, skeletonGroup };
 
-    // --- Load initial pose inline ---
+    // --- Load initial pose ---
     fetch('/poses/sample.json')
       .then((res) => res.json())
       .then((data) => {
@@ -214,7 +214,7 @@ export function usePoseEditor(containerRef) {
     };
   }, []);
 
-  // --- Exposed Methods (use stateRef directly) ---
+  // --- Exposed Methods ---
 
   const loadPose = useCallback(async (name) => {
     const { joints, bones } = stateRef.current;

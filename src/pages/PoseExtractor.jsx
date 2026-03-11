@@ -1,18 +1,22 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePoseExtractor } from '../hooks/usePoseExtractor';
+import { useModelPreview } from '../hooks/useModelPreview';
 import Toast from '../components/Toast';
 
 export default function PoseExtractor() {
     const [fileState, setFileState] = useState({ stage: 'upload', previewUrl: null });
     const [currentResult, setCurrentResult] = useState(null);
     const [currentFormat, setCurrentFormat] = useState('app');
+    const [showModal, setShowModal] = useState(false);
     
     const imgRef = useRef(null);
     const canvasRef = useRef(null);
     const fileInputRef = useRef(null);
     const toastRef = useRef(null);
+    const modelContainerRef = useRef(null);
 
     const { isReady, isLoading, statusText, setStatusText, setIsLoading, detectPose, getFormattedJson } = usePoseExtractor();
+    const { applyPose, zoomIn, zoomOut } = useModelPreview(modelContainerRef);
 
     const handleFile = (file) => {
         if (!file.type.startsWith('image/')) {
@@ -28,7 +32,6 @@ export default function PoseExtractor() {
         if (!isReady) {
             setStatusText('Model still loading…');
             setIsLoading(true);
-            // Wait loop logic can be minimal here as the hook ensures isReady
         }
         
         if (imgRef.current && canvasRef.current) {
@@ -41,9 +44,21 @@ export default function PoseExtractor() {
         }
     };
 
+    // Apply pose to 3D model when modal is opened or result changes while modal is open
+    useEffect(() => {
+        if (!showModal || !currentResult) return;
+        const appData = getFormattedJson(currentResult, 'app');
+        if (appData) {
+            // Small delay to let the modal container mount and the hook initialize
+            const timer = setTimeout(() => applyPose(appData), 300);
+            return () => clearTimeout(timer);
+        }
+    }, [showModal, currentResult]);
+
     const resetUI = () => {
         setFileState({ stage: 'upload', previewUrl: null });
         setCurrentResult(null);
+        setShowModal(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (canvasRef.current) {
             const ctx = canvasRef.current.getContext('2d');
@@ -74,20 +89,30 @@ export default function PoseExtractor() {
         URL.revokeObjectURL(url);
     };
 
-    // --- Inline Styles (Moved from extract.html) ---
     const styles = {
         main: { maxWidth: 1100, margin: '80px auto', padding: '0 24px', display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) 400px', gap: 24, paddingBottom: 40 },
         card: { background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 20, padding: 24, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column' },
         cardTitle: { fontSize: 16, fontWeight: 600, margin: '0 0 16px', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 },
         uploadArea: { border: '2px dashed var(--dashed-border)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease', background: 'var(--subtle-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
-        previewWrapper: { position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', margin: '0 auto' },
-        previewImg: { width: '100%', display: 'block' },
+        previewWrapper: { position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', margin: '0 auto', maxHeight: 450 },
+        previewImg: { width: '100%', maxHeight: 450, objectFit: 'contain', display: 'block' },
         canvas: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, pointerEvents: 'none' },
         statusBar: { marginTop: 16, padding: '12px 16px', borderRadius: 12, background: 'var(--subtle-bg)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, color: 'var(--muted)' },
         jsonOutput: { flex: 1, background: 'var(--subtle-bg)', border: '1px solid var(--subtle-border)', borderRadius: 14, padding: 16, fontFamily: '"SF Mono", "Fira Code", Menlo, monospace', fontSize: 12, color: 'var(--muted)', whiteSpace: 'pre-wrap', overflowY: 'auto', margin: 0, transition: 'color 0.3s ease', maxHeight: '500px' },
         formatToggle: { display: 'flex', background: 'var(--subtle-bg)', borderRadius: 10, padding: 3, marginBottom: 12 },
         toggleBtn: (active) => ({ flex: 1, background: active ? 'var(--btn-bg)' : 'none', border: 'none', padding: '8px 12px', fontSize: 12, fontWeight: 500, color: active ? 'var(--text-color)' : 'var(--muted)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.25s ease', boxShadow: active ? '0 1px 4px rgba(0, 0, 0, 0.08)' : 'none' }),
-        jsonActions: { display: 'flex', gap: 8, marginBottom: 12 }
+        jsonActions: { display: 'flex', gap: 8, marginBottom: 12 },
+        // "View in 3D" button
+        view3dBtn: { background: 'linear-gradient(135deg, #4da3ff 0%, #6c63ff 100%)', border: 'none', borderRadius: 12, padding: '12px 20px', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.3s ease', marginTop: 12, boxShadow: '0 4px 15px rgba(77, 163, 255, 0.3)' },
+        // Modal
+        modalOverlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.25s ease' },
+        modalContent: { position: 'relative', width: '90vw', maxWidth: 900, height: '75vh', background: '#111114', borderRadius: 20, border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' },
+        modalHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'linear-gradient(to bottom, rgba(17,17,20,0.95), transparent)' },
+        modalTitle: { fontSize: 14, fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 },
+        closeBtn: { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-color)', fontSize: 18, transition: 'all 0.2s ease' },
+        zoomControls: { display: 'flex', gap: 6 },
+        zoomBtn: { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-color)', fontSize: 16, fontWeight: 600, transition: 'all 0.2s ease' },
+        modelContainer: { width: '100%', height: '100%' },
     };
 
     return (
@@ -131,6 +156,19 @@ export default function PoseExtractor() {
                             </button>
                         )}
                     </div>
+
+                    {/* View in 3D Button — appears after pose detection */}
+                    {hasData && (
+                        <button 
+                            style={styles.view3dBtn} 
+                            onClick={() => setShowModal(true)}
+                            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                        >
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            View in 3D Model
+                        </button>
+                    )}
                 </div>
 
                 <div style={styles.card}>
@@ -152,8 +190,32 @@ export default function PoseExtractor() {
                     </pre>
                 </div>
             </main>
+
+            {/* 3D Model Modal */}
+            {showModal && (
+                <div style={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+                    <div style={styles.modalContent}>
+                        <div style={styles.modalHeader}>
+                            <span style={styles.modalTitle}>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                3D Pose Preview
+                            </span>
+                            <div style={styles.zoomControls}>
+                                <button style={styles.zoomBtn} onClick={zoomIn} title="Zoom In">+</button>
+                                <button style={styles.zoomBtn} onClick={zoomOut} title="Zoom Out">−</button>
+                                <button style={styles.closeBtn} onClick={() => setShowModal(false)} title="Close">✕</button>
+                            </div>
+                        </div>
+                        <div ref={modelContainerRef} style={styles.modelContainer} />
+                    </div>
+                </div>
+            )}
+
             <Toast ref={toastRef} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            `}</style>
         </>
     );
 }
