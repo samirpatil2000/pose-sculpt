@@ -187,25 +187,38 @@ function drawLandmarks(result) {
 // ── JSON Formatting ──
 function toAppFormat(landmarks, worldLandmarks) {
     const wl = worldLandmarks || landmarks;
-    const result = {};
 
+    // Step 1: Convert all relevant landmarks to Three.js coords (Y-up, negate Y and Z)
+    const converted = {};
     for (const [jointName, mapping] of Object.entries(APP_JOINT_MAP)) {
         if (mapping.idx !== undefined) {
             const lm = wl[mapping.idx];
-            result[jointName] = [
-                parseFloat(lm.x.toFixed(3)),
-                parseFloat((1.5 - lm.y).toFixed(3)),   // flip Y and offset to match editor
-                parseFloat((-lm.z).toFixed(3))
-            ];
+            converted[jointName] = [lm.x, -lm.y, -lm.z];
         } else if (mapping.avg) {
             const a = wl[mapping.avg[0]];
             const b = wl[mapping.avg[1]];
-            result[jointName] = [
-                parseFloat(((a.x + b.x) / 2).toFixed(3)),
-                parseFloat((1.5 - (a.y + b.y) / 2).toFixed(3)),
-                parseFloat((-(a.z + b.z) / 2).toFixed(3))
+            converted[jointName] = [
+                (a.x + b.x) / 2,
+                -(a.y + b.y) / 2,
+                -(a.z + b.z) / 2
             ];
         }
+    }
+
+    // Step 2: Find the lowest Y (feet) to use as ground, and center X on hips
+    const allY = Object.values(converted).map(c => c[1]);
+    const minY = Math.min(...allY);
+    const hipX = (converted.left_hip[0] + converted.right_hip[0]) / 2;
+    const hipZ = (converted.left_hip[2] + converted.right_hip[2]) / 2;
+
+    // Step 3: Offset so feet are at Y=0 and hips are centered on X=0, Z=0
+    const result = {};
+    for (const [jointName, coords] of Object.entries(converted)) {
+        result[jointName] = [
+            parseFloat((coords[0] - hipX).toFixed(3)),
+            parseFloat((coords[1] - minY).toFixed(3)),
+            parseFloat((coords[2] - hipZ).toFixed(3))
+        ];
     }
     return result;
 }

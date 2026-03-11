@@ -68,8 +68,7 @@ function init() {
 
     // Scene
     scene = new THREE.Scene();
-    // Transparent background to show CSS gradient
-    scene.background = null;
+    scene.background = new THREE.Color(0x000000);
 
     // Camera
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -103,8 +102,8 @@ function init() {
     scene.add(backLight);
 
     // Grid (Subtle)
-    const gridHelper = new THREE.GridHelper(4, 20, 0x000000, 0x000000);
-    gridHelper.material.opacity = 0.05;
+    const gridHelper = new THREE.GridHelper(4, 20, 0xffffff, 0xffffff);
+    gridHelper.material.opacity = 0.1;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
