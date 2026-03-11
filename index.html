@@ -133,9 +133,43 @@
             background: rgba(0, 0, 0, 0.06);
             margin: 4px 0;
         }
+        /* ── Tab Bar ── */
+        .tab-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            display: flex;
+            gap: 4px;
+            padding: 12px 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .tab-bar a {
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 18px;
+            border-radius: 10px;
+            color: #86868b;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tab-bar a:hover { color: var(--text-color); background: rgba(0,0,0,0.03); }
+        .tab-bar a.active {
+            background: rgba(0, 113, 227, 0.1);
+            color: var(--accent-color);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
+    <nav class="tab-bar">
+        <a href="/" class="active">Pose Editor</a>
+        <a href="/extract.html">Pose Extractor</a>
+    </nav>
     <div id="canvas-container"></div>
     <div class="ui-panel">
         <h1 class="ui-title">Pose Editor</h1>
