@@ -16,7 +16,6 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          extract: path.resolve(__dirname, 'extract.html'),
         },
       },
     },
