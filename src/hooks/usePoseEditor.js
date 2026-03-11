@@ -290,5 +290,20 @@ export function usePoseEditor(containerRef) {
     reader.readAsText(file);
   }, []);
 
-  return { loadPose, exportPNG, exportJSON, importJSON };
+  const getJointData = useCallback(() => {
+    const { joints } = stateRef.current;
+    if (!joints.length) return null;
+    const data = {};
+    JOINT_NAMES.forEach((name, i) => {
+      const pos = joints[i].position;
+      data[name] = [
+        parseFloat(pos.x.toFixed(3)),
+        parseFloat(pos.y.toFixed(3)),
+        parseFloat(pos.z.toFixed(3)),
+      ];
+    });
+    return data;
+  }, []);
+
+  return { loadPose, exportPNG, exportJSON, importJSON, getJointData };
 }
