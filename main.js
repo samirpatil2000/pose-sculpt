@@ -131,6 +131,15 @@ function init() {
     document.getElementById('btn-export-png').addEventListener('click', exportPNG);
     document.getElementById('btn-export-json').addEventListener('click', exportJSON);
 
+    // Import JSON
+    const btnImportJson = document.getElementById('btn-import-json');
+    const jsonFileInput = document.getElementById('json-file-input');
+    btnImportJson.addEventListener('click', () => jsonFileInput.click());
+    jsonFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) importJSON(e.target.files[0]);
+        e.target.value = '';  // allow re-importing same file
+    });
+
     // Load initial pose
     loadPose('sample');
 }
@@ -357,4 +366,38 @@ function exportJSON() {
     link.click();
     
     URL.revokeObjectURL(url);
+}
+
+function importJSON(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            let matched = 0;
+
+            JOINT_NAMES.forEach((name, i) => {
+                if (data[name]) {
+                    const [x, y, z] = data[name];
+                    joints[i].position.set(x, y, z);
+                    matched++;
+                }
+            });
+
+            if (matched === 0) {
+                console.warn('No matching joints found in JSON');
+                return;
+            }
+
+            updateBones();
+
+            // Reset pose selector to show it's a custom import
+            const select = document.getElementById('pose-select');
+            select.value = '';
+
+            console.log(`Imported ${matched}/${JOINT_NAMES.length} joints from JSON`);
+        } catch (err) {
+            console.error('Failed to parse JSON:', err);
+        }
+    };
+    reader.readAsText(file);
 }
