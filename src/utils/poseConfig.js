@@ -1,19 +1,3 @@
-export const JOINT_NAMES = [
-    "nose","neck","right_shoulder","right_elbow","right_wrist",
-    "left_shoulder","left_elbow","left_wrist",
-    "right_hip","right_knee","right_ankle",
-    "left_hip","left_knee","left_ankle",
-    "right_eye","left_eye","right_ear","left_ear"
-];
-
-export const CONNECTIONS = [
-    [0,1],[1,2],[2,3],[3,4],
-    [1,5],[5,6],[6,7],
-    [1,8],[8,9],[9,10],
-    [1,11],[11,12],[12,13],
-    [0,14],[0,15],[14,16],[15,17]
-];
-
 export const MP_LANDMARK_NAMES = [
     "nose", "left_eye_inner", "left_eye", "left_eye_outer",
     "right_eye_inner", "right_eye", "right_eye_outer",
@@ -26,98 +10,66 @@ export const MP_LANDMARK_NAMES = [
     "left_foot_index", "right_foot_index"
 ];
 
-export const APP_JOINT_MAP = {
-    nose: { idx: 0 },
-    neck: { avg: [11, 12] },            // avg of left_shoulder + right_shoulder
-    right_shoulder: { idx: 12 },
-    right_elbow: { idx: 14 },
-    right_wrist: { idx: 16 },
-    left_shoulder: { idx: 11 },
-    left_elbow: { idx: 13 },
-    left_wrist: { idx: 15 },
-    right_hip: { idx: 24 },
-    right_knee: { idx: 26 },
-    right_ankle: { idx: 28 },
-    left_hip: { idx: 23 },
-    left_knee: { idx: 25 },
-    left_ankle: { idx: 27 },
-    right_eye: { idx: 5 },
-    left_eye: { idx: 2 },
-    right_ear: { idx: 8 },
-    left_ear: { idx: 7 }
-};
+// For the Pose Editor, we now use all 33 native landmarks
+export const JOINT_NAMES = [...MP_LANDMARK_NAMES];
+
+// Standard MediaPipe Pose Connections (33 landmarks)
+export const CONNECTIONS = [
+    [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [12, 11], [15, 21], [15, 17], [15, 19], [17, 19], [16, 22], [16, 18], [16, 20], [18, 20], [11, 23], [12, 24], [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32], [27, 31], [28, 32],
+    [0, 1], [0, 4], [1, 2], [2, 3], [3, 7], [4, 5], [5, 6], [6, 8], [9, 10]
+];
 
 export function getJointColor(index) {
-    if (index === 0 || index >= 14) return 0x9c27b0; // head/face: purple
-    if (index >= 2 && index <= 4) return 0xcddc39; // right arm: lime
-    if (index >= 5 && index <= 7) return 0x4caf50; // left arm: green
-    if (index >= 8 && index <= 10) return 0xffb300; // right leg: amber
-    if (index >= 11 && index <= 13) return 0x00bcd4; // left leg: cyan
-    if (index === 1) return 0x0000ff; // neck: blue
+    if (index <= 10) return 0x9c27b0; // head/face: purple
+    if ([12, 14, 16, 18, 20, 22].includes(index)) return 0xcddc39; // right arm: lime
+    if ([11, 13, 15, 17, 19, 21].includes(index)) return 0x4caf50; // left arm: green
+    if ([24, 26, 28, 30, 32].includes(index)) return 0xffb300; // right leg: amber
+    if ([23, 25, 27, 29, 31].includes(index)) return 0x00bcd4; // left leg: cyan
     return 0xffffff;
 }
 
+/**
+ * Formats MediaPipe results into the nested { landmarks, worldLandmarks } structure.
+ * @param {Array} landmarks - Screen-space landmarks
+ * @param {Array} worldLandmarks - Meter-space world landmarks
+ */
 export function toAppFormat(landmarks, worldLandmarks) {
-    const wl = worldLandmarks || landmarks;
+    if (!landmarks) return null;
+    
+    const formatted = {
+        landmarks: {},
+        worldLandmarks: {}
+    };
 
-    // Convert to Three.js coords (Y-up, negate Y and Z)
-    const converted = {};
-    for (const [jointName, mapping] of Object.entries(APP_JOINT_MAP)) {
-        if (mapping.idx !== undefined) {
-            const lm = wl[mapping.idx];
-            converted[jointName] = [lm.x, -lm.y, -lm.z];
-        } else if (mapping.avg) {
-            const a = wl[mapping.avg[0]];
-            const b = wl[mapping.avg[1]];
-            converted[jointName] = [
-                (a.x + b.x) / 2,
-                -(a.y + b.y) / 2,
-                -(a.z + b.z) / 2
-            ];
+    for (let i = 0; i < landmarks.length; i++) {
+        const name = MP_LANDMARK_NAMES[i] || `landmark_${i}`;
+        const lm = landmarks[i];
+        formatted.landmarks[name] = {
+            x: parseFloat(lm.x.toFixed(6)),
+            y: parseFloat(lm.y.toFixed(6)),
+            z: parseFloat(lm.z.toFixed(6)),
+            visibility: parseFloat((lm.visibility || 0).toFixed(4))
+        };
+        
+        if (worldLandmarks && worldLandmarks[i]) {
+            const wl = worldLandmarks[i];
+            formatted.worldLandmarks[name] = {
+                x: parseFloat(wl.x.toFixed(6)),
+                y: parseFloat(wl.y.toFixed(6)),
+                z: parseFloat(wl.z.toFixed(6)),
+                visibility: parseFloat((wl.visibility || 0).toFixed(4))
+            };
         }
     }
-
-    // Offset so feet are at Y=0 and hips are centered
-    const allY = Object.values(converted).map(c => c[1]);
-    const minY = Math.min(...allY);
-    const hipX = (converted.left_hip[0] + converted.right_hip[0]) / 2;
-    const hipZ = (converted.left_hip[2] + converted.right_hip[2]) / 2;
-
-    const result = {};
-    for (const [jointName, coords] of Object.entries(converted)) {
-        result[jointName] = [
-            parseFloat((coords[0] - hipX).toFixed(3)),
-            parseFloat((coords[1] - minY).toFixed(3)),
-            parseFloat((coords[2] - hipZ).toFixed(3))
-        ];
-    }
-    return result;
+    
+    return formatted;
 }
 
+/** Legacy support - actually same as toAppFormat now but handles array of results */
 export function toRawFormat(landmarks, worldLandmarks) {
-    const poses = [];
-    for (let p = 0; p < landmarks.length; p++) {
-        const pose = { landmarks: {}, worldLandmarks: {} };
-        for (let i = 0; i < landmarks[p].length; i++) {
-            const name = MP_LANDMARK_NAMES[i] || `landmark_${i}`;
-            const lm = landmarks[p][i];
-            pose.landmarks[name] = {
-                x: parseFloat(lm.x.toFixed(6)),
-                y: parseFloat(lm.y.toFixed(6)),
-                z: parseFloat(lm.z.toFixed(6)),
-                visibility: parseFloat(lm.visibility.toFixed(4))
-            };
-            if (worldLandmarks && worldLandmarks[p]) {
-                const wl = worldLandmarks[p][i];
-                pose.worldLandmarks[name] = {
-                    x: parseFloat(wl.x.toFixed(6)),
-                    y: parseFloat(wl.y.toFixed(6)),
-                    z: parseFloat(wl.z.toFixed(6)),
-                    visibility: parseFloat(wl.visibility.toFixed(4))
-                };
-            }
-        }
-        poses.push(pose);
+    if (!landmarks) return null;
+    if (Array.isArray(landmarks[0])) {
+        return landmarks.map((l, i) => toAppFormat(l, worldLandmarks?.[i]));
     }
-    return poses.length === 1 ? poses[0] : poses;
+    return toAppFormat(landmarks, worldLandmarks);
 }
