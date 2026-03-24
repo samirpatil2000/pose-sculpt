@@ -18,6 +18,13 @@ export function useModelPreview(containerRef) {
   });
 
   const [containerReady, setContainerReady] = useState(false);
+  const [playbackState, setPlaybackState] = useState({
+    isPlaying: false,
+    currentFrame: 0,
+    totalFrames: 0,
+  });
+  const sequenceRef = useRef(null);
+  const playbackIntervalRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -144,6 +151,61 @@ export function useModelPreview(containerRef) {
     applyPoseToModel(boneRefs, poseData);
   }, []);
 
+  const pauseSequence = useCallback(() => {
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+    setPlaybackState(s => ({ ...s, isPlaying: false }));
+  }, []);
+
+  const playSequence = useCallback((sequenceData, fps = 30) => {
+    if (!sequenceData || Object.keys(sequenceData).length === 0) return;
+    
+    // Convert object { "0": pose, "1": pose } to sorted array if needed
+    // Assuming keys are sequential integers.
+    const frames = Object.keys(sequenceData).sort((a,b) => parseInt(a) - parseInt(b)).map(k => sequenceData[k]);
+    sequenceRef.current = frames;
+    
+    setPlaybackState(s => ({ 
+      ...s, 
+      isPlaying: true, 
+      totalFrames: frames.length,
+      // If we are at the end, restart
+      currentFrame: s.currentFrame >= frames.length - 1 ? 0 : s.currentFrame 
+    }));
+
+    if (playbackIntervalRef.current) clearInterval(playbackIntervalRef.current);
+    
+    playbackIntervalRef.current = setInterval(() => {
+      setPlaybackState(prev => {
+        let nextFrame = prev.currentFrame + 1;
+        if (nextFrame >= frames.length) {
+          nextFrame = 0; // Loop or stop? Let's loop for now
+        }
+        applyPose(frames[nextFrame]);
+        return { ...prev, currentFrame: nextFrame };
+      });
+    }, 1000 / fps);
+  }, [applyPose]);
+
+  const stopSequence = useCallback(() => {
+    pauseSequence();
+    setPlaybackState(s => ({ ...s, currentFrame: 0, totalFrames: 0 }));
+    sequenceRef.current = null;
+  }, [pauseSequence]);
+
+  const seekFrame = useCallback((frameIndex) => {
+    if (!sequenceRef.current) return;
+    const len = sequenceRef.current.length;
+    let idx = parseInt(frameIndex);
+    if (idx < 0) idx = 0;
+    if (idx >= len) idx = len - 1;
+    
+    setPlaybackState(s => ({ ...s, currentFrame: idx }));
+    applyPose(sequenceRef.current[idx]);
+  }, [applyPose]);
+
   const zoomIn = useCallback(() => {
     const { controls } = stateRef.current;
     if (!controls) return;
@@ -160,5 +222,8 @@ export function useModelPreview(containerRef) {
     controls.update();
   }, []);
 
-  return { applyPose, zoomIn, zoomOut };
+  return { 
+    applyPose, zoomIn, zoomOut, 
+    playbackState, playSequence, pauseSequence, stopSequence, seekFrame 
+  };
 }

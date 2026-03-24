@@ -73,14 +73,17 @@ export function applyPoseToModel(boneRefs, poseData) {
   // MediaPipe world landmarks are in meters, centered at hips.
   // Our model coordinates are in cm, so we scale by 100.
   const wl = poseData.worldLandmarks || poseData.landmarks;
+  const screenLandmarks = poseData.landmarks || wl;
   if (!wl) return;
 
   const jointPositions = {};
   for (const [name, data] of Object.entries(wl)) {
-      // MediaPipe: Y is down, Z is depth (negative is closer to camera)
-      // Three.js: Y is up, Z is toward camera
-      // So we use: x, -y, -z
       jointPositions[name] = new THREE.Vector3(data.x, -data.y, -data.z);
+  }
+
+  const rootPositions = {};
+  for (const [name, data] of Object.entries(screenLandmarks)) {
+      rootPositions[name] = new THREE.Vector3(data.x, -data.y, -data.z);
   }
 
   // Calculate virtual 'neck' joint (midpoint of shoulders)
@@ -107,16 +110,30 @@ export function applyPoseToModel(boneRefs, poseData) {
   if (boneRefs['Hips']) boneRefs['Hips'].updateWorldMatrix(true, true);
 
   // 2. Apply hip position (root translation)
-  if (boneRefs['Hips'] && jointPositions.left_hip && jointPositions.right_hip) {
+  if (boneRefs['Hips'] && rootPositions.left_hip && rootPositions.right_hip) {
     const hipCenter = new THREE.Vector3()
-      .addVectors(jointPositions.left_hip, jointPositions.right_hip)
+      .addVectors(rootPositions.left_hip, rootPositions.right_hip)
       .multiplyScalar(0.5);
 
-    const scale = 100;
+    // rootPositions.x is [0, 1]. Center it to 0.5.
+    // rootPositions.y is [-1, 0]. Center it to -0.5.
+    // Scale it to world space (e.g. 200 units total width)
+    const moveScaleX = 200;
+    const moveScaleY = 200;
+    const moveScaleZ = 200;
+
+    const offsetX = (hipCenter.x - 0.5) * moveScaleX;
+    const offsetY = (hipCenter.y + 0.5) * moveScaleY;
+    const offsetZ = (hipCenter.z) * moveScaleZ;
+
+    const baseX = restPose['Hips'].restPosition.x;
+    const baseY = restPose['Hips'].restPosition.y;
+    const baseZ = restPose['Hips'].restPosition.z;
+
     boneRefs['Hips'].position.set(
-      hipCenter.x * scale,
-      hipCenter.y * scale,
-      hipCenter.z * scale
+      baseX + offsetX,
+      baseY + offsetY,
+      baseZ + offsetZ
     );
     boneRefs['Hips'].updateWorldMatrix(true, true);
   }

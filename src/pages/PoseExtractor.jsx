@@ -9,6 +9,7 @@ export default function PoseExtractor() {
     const [currentResult, setCurrentResult] = useState(null);
     const [currentFormat, setCurrentFormat] = useState('app');
     const [showModal, setShowModal] = useState(false);
+    const [showAnimModal, setShowAnimModal] = useState(false);
     
     // --- Scanning States ---
     const [isScanning, setIsScanning] = useState(false);
@@ -22,6 +23,7 @@ export default function PoseExtractor() {
     const videoFileInputRef = useRef(null);
     const toastRef = useRef(null);
     const modelContainerRef = useRef(null);
+    const animContainerRef = useRef(null);
     const latestResultRef = useRef(null);
 
     const { 
@@ -30,7 +32,18 @@ export default function PoseExtractor() {
         detectPose, startProcessing, stopProcessing, getFormattedJson 
     } = usePoseExtractor();
     
-    const { applyPose, zoomIn, zoomOut } = useModelPreview(modelContainerRef);
+    const { 
+        applyPose: applyPoseSingle, 
+        zoomIn: zoomInSingle, 
+        zoomOut: zoomOutSingle 
+    } = useModelPreview(modelContainerRef);
+
+    const { 
+        applyPose: applyPoseAnim, 
+        zoomIn: zoomInAnim, 
+        zoomOut: zoomOutAnim, 
+        playbackState, playSequence, pauseSequence, stopSequence, seekFrame 
+    } = useModelPreview(animContainerRef);
 
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
@@ -173,14 +186,30 @@ export default function PoseExtractor() {
         toastRef.current?.show('Video scan complete!');
     };
 
+    // Single frame modal logic
     useEffect(() => {
         if (!showModal || !currentResult) return;
         const appData = getFormattedJson(currentResult, 'app');
         if (appData) {
-            const timer = setTimeout(() => applyPose(appData), 300);
+            const timer = setTimeout(() => applyPoseSingle(appData), 300);
             return () => clearTimeout(timer);
         }
-    }, [showModal, currentResult]);
+    }, [showModal, currentResult, applyPoseSingle, getFormattedJson]);
+
+    // Animation modal logic
+    useEffect(() => {
+        if (!showAnimModal) {
+            stopSequence();
+            return;
+        }
+        if (scannedData) {
+            const timer = setTimeout(() => playSequence(scannedData, 30), 400); // slightly longer delay for full scene init
+            return () => {
+                clearTimeout(timer);
+                stopSequence();
+            };
+        }
+    }, [showAnimModal, scannedData, playSequence, stopSequence]);
 
     const resetUI = () => {
         setFileState({ stage: 'upload', previewUrl: null });
@@ -190,6 +219,7 @@ export default function PoseExtractor() {
         setScanProgress(0);
         latestResultRef.current = null;
         setShowModal(false);
+        setShowAnimModal(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (videoFileInputRef.current) videoFileInputRef.current.value = '';
         if (canvasRef.current) {
@@ -243,11 +273,15 @@ export default function PoseExtractor() {
         actionBtn: { background: 'linear-gradient(135deg, #4da3ff 0%, #6c63ff 100%)', border: 'none', borderRadius: 12, padding: '12px 20px', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.3s ease', marginTop: 12, boxShadow: '0 4px 15px rgba(77, 163, 255, 0.3)', opacity: isScanning ? 0.6 : 1, pointerEvents: isScanning ? 'none' : 'auto' },
         scanBtn: { background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 12, padding: '12px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.3s ease', marginTop: 12, opacity: isScanning ? 0.6 : 1, pointerEvents: isScanning ? 'none' : 'auto' },
         modalOverlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.25s ease' },
-        modalContent: { position: 'relative', width: '90vw', maxWidth: 900, height: '75vh', background: '#111114', borderRadius: 20, border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' },
+        modalContent: { position: 'relative', width: '90vw', maxWidth: 900, height: '80vh', background: '#111114', borderRadius: 20, border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' },
         modalHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'linear-gradient(to bottom, rgba(17,17,20,0.95), transparent)' },
         modalTitle: { fontSize: 14, fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 },
         closeBtn: { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-color)', fontSize: 18, transition: 'all 0.2s ease' },
-        modelContainer: { width: '100%', height: '100%' },
+        modelContainer: { width: '100%', flex: 1, position: 'relative' },
+        playbackBar: { background: '#18181b', borderTop: '1px solid var(--glass-border)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16, zIndex: 20, width: '100%' },
+        playBtn: { background: 'var(--accent-color)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.2s ease' },
+        scrubber: { flex: 1, accentColor: 'var(--accent-color)', cursor: 'pointer' },
+        frameCounter: { fontSize: 12, fontWeight: 600, color: 'var(--muted)', width: 80, textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
         tabBar: { display: 'flex', gap: 8, marginBottom: 16, background: 'var(--subtle-bg)', padding: 4, borderRadius: 12 },
         tabBtn: (active) => ({ flex: 1, padding: '8px', background: active ? 'var(--btn-bg)' : 'transparent', border: '1px solid', borderColor: active ? 'var(--btn-border)' : 'transparent', borderRadius: 8, color: active ? 'var(--text-color)' : 'var(--muted)', fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s ease', pointerEvents: isScanning ? 'none' : 'auto' }),
         modelSelect: { background: 'var(--subtle-bg)', border: '1px solid var(--subtle-border)', color: 'var(--text-color)', padding: '6px 12px', borderRadius: 8, fontSize: 12, outline: 'none', cursor: 'pointer' }
@@ -341,11 +375,14 @@ export default function PoseExtractor() {
                     {hasData && (
                         <button 
                             style={styles.actionBtn} 
-                            onClick={() => setShowModal(true)}
-                            disabled={scannedData !== null} // Cannot preview 3D for a multi-frame sequence easily yet
+                            onClick={() => scannedData ? setShowAnimModal(true) : setShowModal(true)}
                         >
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                            {scannedData ? 'Sequence Ready' : 'View in 3D Model'}
+                            {scannedData ? (
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            )}
+                            {scannedData ? 'Animate Sequence ▶' : 'View in 3D Model'}
                         </button>
                     )}
                 </div>
@@ -372,7 +409,7 @@ export default function PoseExtractor() {
                 </div>
             </main>
 
-            {/* 3D Model Modal */}
+            {/* 3D Model Modal (Single Pose) */}
             {showModal && (
                 <div style={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
                     <div style={styles.modalContent}>
@@ -382,12 +419,58 @@ export default function PoseExtractor() {
                                 3D Pose Preview
                             </span>
                             <div style={styles.zoomControls}>
-                                <button style={styles.zoomBtn} onClick={zoomIn} title="Zoom In">+</button>
-                                <button style={styles.zoomBtn} onClick={zoomOut} title="Zoom Out">−</button>
+                                <button style={styles.zoomBtn} onClick={zoomInSingle} title="Zoom In">+</button>
+                                <button style={styles.zoomBtn} onClick={zoomOutSingle} title="Zoom Out">−</button>
                                 <button style={styles.closeBtn} onClick={() => setShowModal(false)} title="Close">✕</button>
                             </div>
                         </div>
                         <div ref={modelContainerRef} style={styles.modelContainer} />
+                    </div>
+                </div>
+            )}
+
+            {/* Sequence Animation Modal */}
+            {showAnimModal && (
+                <div style={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setShowAnimModal(false); }}>
+                    <div style={styles.modalContent}>
+                        <div style={styles.modalHeader}>
+                            <span style={styles.modalTitle}>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                Sequence Animation Player
+                            </span>
+                            <div style={styles.zoomControls}>
+                                <button style={styles.zoomBtn} onClick={zoomInAnim} title="Zoom In">+</button>
+                                <button style={styles.zoomBtn} onClick={zoomOutAnim} title="Zoom Out">−</button>
+                                <button style={styles.closeBtn} onClick={() => setShowAnimModal(false)} title="Close">✕</button>
+                            </div>
+                        </div>
+                        <div ref={animContainerRef} style={styles.modelContainer} />
+                        <div style={styles.playbackBar}>
+                            <button 
+                                style={styles.playBtn}
+                                onClick={() => playbackState.isPlaying ? pauseSequence() : playSequence(scannedData)}
+                            >
+                                {playbackState.isPlaying ? (
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                ) : (
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                )}
+                            </button>
+                            <input 
+                                type="range" 
+                                style={styles.scrubber} 
+                                min="0" 
+                                max={Math.max(0, playbackState.totalFrames - 1)} 
+                                value={playbackState.currentFrame} 
+                                onChange={(e) => {
+                                    pauseSequence();
+                                    seekFrame(e.target.value);
+                                }} 
+                            />
+                            <span style={styles.frameCounter}>
+                                Frame {playbackState.currentFrame + 1} / {Math.max(1, playbackState.totalFrames)}
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
