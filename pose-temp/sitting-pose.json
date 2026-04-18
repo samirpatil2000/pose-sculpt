@@ -1,0 +1,287 @@
+{
+  "mixamorig_Hips": {
+    "x": 0.05,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_Spine": {
+    "x": -0.1,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_Spine2": {
+    "x": -0.08,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightShoulder": {
+    "x": 1.6926,
+    "y": 0.0495,
+    "z": 1.7782
+  },
+  "mixamorig_RightArm": {
+    "x": -0.14,
+    "y": -0.8,
+    "z": -1.4
+  },
+  "mixamorig_RightForeArm": {
+    "x": 0,
+    "y": 0.6,
+    "z": 0
+  },
+  "mixamorig_RightHandThumb1": {
+    "x": 0.5274,
+    "y": 0,
+    "z": -0.4773
+  },
+  "mixamorig_RightHandThumb2": {
+    "x": -0.0046,
+    "y": -0.0024,
+    "z": 0.0186
+  },
+  "mixamorig_RightHandThumb3": {
+    "x": -0.0033,
+    "y": -0.0016,
+    "z": 0.0138
+  },
+  "mixamorig_RightHandThumb4": {
+    "x": 0,
+    "y": -0.2358,
+    "z": -0.0982
+  },
+  "mixamorig_RightHandIndex1": {
+    "x": 0.18,
+    "y": 0,
+    "z": -0.05
+  },
+  "mixamorig_RightHandIndex2": {
+    "x": 0.22,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandIndex3": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandIndex4": {
+    "x": 0,
+    "y": 0.002,
+    "z": 0.0002
+  },
+  "mixamorig_RightHandMiddle1": {
+    "x": 0.18,
+    "y": 0,
+    "z": -0.01
+  },
+  "mixamorig_RightHandMiddle2": {
+    "x": 0.22,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandMiddle3": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandMiddle4": {
+    "x": 0,
+    "y": 0.0019,
+    "z": 0.0003
+  },
+  "mixamorig_RightHandRing1": {
+    "x": 0.16,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandRing2": {
+    "x": 0.2,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandRing3": {
+    "x": 0.14,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandRing4": {
+    "x": 0,
+    "y": 0.0003,
+    "z": -0.0016
+  },
+  "mixamorig_RightHandPinky1": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0.01
+  },
+  "mixamorig_RightHandPinky2": {
+    "x": 0.18,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandPinky3": {
+    "x": 0.12,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightHandPinky4": {
+    "x": 0,
+    "y": 0.0031,
+    "z": -0.0001
+  },
+  "mixamorig_LeftShoulder": {
+    "x": 1.6926,
+    "y": -0.0495,
+    "z": -1.7782
+  },
+  "mixamorig_LeftArm": {
+    "x": -0.05,
+    "y": 0.8,
+    "z": 1.4
+  },
+  "mixamorig_LeftForeArm": {
+    "x": 0,
+    "y": -0.6,
+    "z": 0
+  },
+  "mixamorig_LeftHandThumb1": {
+    "x": 0.5269,
+    "y": 0,
+    "z": 0.4754
+  },
+  "mixamorig_LeftHandThumb2": {
+    "x": -0.0041,
+    "y": 0.0021,
+    "z": -0.0164
+  },
+  "mixamorig_LeftHandThumb3": {
+    "x": -0.0031,
+    "y": 0.0015,
+    "z": -0.0121
+  },
+  "mixamorig_LeftHandThumb4": {
+    "x": 0,
+    "y": 0.2462,
+    "z": 0.084
+  },
+  "mixamorig_LeftHandIndex1": {
+    "x": 0.18,
+    "y": 0,
+    "z": 0.05
+  },
+  "mixamorig_LeftHandIndex2": {
+    "x": 0.22,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandIndex3": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandMiddle1": {
+    "x": 0.18,
+    "y": 0,
+    "z": 0.01
+  },
+  "mixamorig_LeftHandMiddle2": {
+    "x": 0.22,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandMiddle3": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandMiddle4": {
+    "x": 0,
+    "y": -0.002,
+    "z": 0.0001
+  },
+  "mixamorig_LeftHandRing1": {
+    "x": 0.16,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandRing2": {
+    "x": 0.2,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandRing3": {
+    "x": 0.14,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandPinky1": {
+    "x": 0.15,
+    "y": 0,
+    "z": 0.004
+  },
+  "mixamorig_LeftHandPinky2": {
+    "x": 0.18,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandPinky3": {
+    "x": 0.12,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftHandPinky4": {
+    "x": 0,
+    "y": -0.0016,
+    "z": -0.0006
+  },
+  "mixamorig_RightUpLeg": {
+    "x": -1.65,
+    "y": 0.05,
+    "z": 3.1416
+  },
+  "mixamorig_RightLeg": {
+    "x": -1.5,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightFoot": {
+    "x": 1,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightToeBase": {
+    "x": 0.25,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_RightToe_End": {
+    "x": 0,
+    "y": 0.0232,
+    "z": 0
+  },
+  "mixamorig_LeftUpLeg": {
+    "x": -1.65,
+    "y": -0.05,
+    "z": 3.1416
+  },
+  "mixamorig_LeftLeg": {
+    "x": -1.5,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftFoot": {
+    "x": 0.97,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftToeBase": {
+    "x": 0.25,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_LeftToe_End": {
+    "x": 0,
+    "y": -0.0237,
+    "z": 0
+  }
+}
