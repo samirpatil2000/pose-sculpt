@@ -752,6 +752,11 @@
     Bones
   </button>
 
+  <button class="topbar-btn" id="togglePointsBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/></svg>
+    Points
+  </button>
+
   <button class="topbar-btn primary" id="exportBtn" disabled>
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Export
@@ -871,6 +876,9 @@ let animId;
 let boneIndicator = null;      // the glowing sphere
 let boneIndicatorRing = null;  // outer ring pulse
 let skeletonHelper = null;     // wireframe skeleton
+let allBoneIndicators = {};
+let pointsGroup = null;
+let showAllPoints = false;
 let clock = new THREE.Clock();
 
 /* ── ORBIT ── */
@@ -915,6 +923,17 @@ function initThree(){
 function loop(){
   animId = requestAnimationFrame(loop);
   const elapsed = clock.getElapsedTime();
+
+  // Update all points if visible
+  if(pointsGroup && pointsGroup.visible){
+    for(const name in allBoneIndicators){
+      if(boneMap[name]){
+        const worldPos = new THREE.Vector3();
+        boneMap[name].getWorldPosition(worldPos);
+        allBoneIndicators[name].position.copy(worldPos);
+      }
+    }
+  }
 
   // Animate bone indicator
   if(boneIndicator && boneIndicator.visible){
@@ -961,10 +980,12 @@ function updateCamera(){
 }
 
 function setupOrbit(canvas){
-  canvas.addEventListener('mousedown', e=>{isDragging=true;lastMouse={x:e.clientX,y:e.clientY};});
+  let wasDragged = false;
+  canvas.addEventListener('mousedown', e=>{isDragging=true;wasDragged=false;lastMouse={x:e.clientX,y:e.clientY};});
   window.addEventListener('mouseup', ()=>isDragging=false);
   window.addEventListener('mousemove', e=>{
     if(!isDragging) return;
+    if(Math.abs(e.clientX-lastMouse.x) > 2 || Math.abs(e.clientY-lastMouse.y) > 2) wasDragged = true;
     sph.theta -= (e.clientX-lastMouse.x)*0.01;
     sph.phi = Math.max(0.2,Math.min(Math.PI-0.2, sph.phi-(e.clientY-lastMouse.y)*0.01));
     lastMouse = {x:e.clientX,y:e.clientY};
@@ -974,6 +995,28 @@ function setupOrbit(canvas){
     sph.radius = Math.max(0.5,Math.min(10,sph.radius+e.deltaY*0.005));
     updateCamera(); e.preventDefault();
   },{passive:false});
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  canvas.addEventListener('click', e => {
+    if(wasDragged) return;
+    if(!pointsGroup || !pointsGroup.visible) return;
+
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(pointsGroup.children);
+    if(intersects.length > 0){
+      const boneName = intersects[0].object.userData.boneName;
+      if(boneName) {
+        selectBone(boneName);
+        document.getElementById('bonePanel').classList.remove('hidden');
+        setTimeout(onResize, 50);
+      }
+    }
+  });
 }
 
 /* ── BONE INDICATOR SETUP ── */
@@ -981,6 +1024,29 @@ function createBoneIndicator(){
   // Remove old indicators
   if(boneIndicator){ scene.remove(boneIndicator); boneIndicator = null; }
   if(boneIndicatorRing){ scene.remove(boneIndicatorRing); boneIndicatorRing = null; }
+  if(pointsGroup){ scene.remove(pointsGroup); pointsGroup = null; }
+
+  // Create points group
+  pointsGroup = new THREE.Group();
+  pointsGroup.visible = showAllPoints;
+  scene.add(pointsGroup);
+  allBoneIndicators = {};
+
+  const unselectedGeo = new THREE.SphereGeometry(0.014, 12, 12);
+  const unselectedMat = new THREE.MeshBasicMaterial({
+    color: 0x30D158,
+    transparent: true,
+    opacity: 0.65,
+    depthTest: false
+  });
+
+  for(const name in boneMap){
+    const mesh = new THREE.Mesh(unselectedGeo, unselectedMat);
+    mesh.renderOrder = 997;
+    mesh.userData.boneName = name;
+    pointsGroup.add(mesh);
+    allBoneIndicators[name] = mesh;
+  }
 
   // Inner glowing sphere
   const sphereGeo = new THREE.SphereGeometry(0.018, 16, 16);
@@ -1316,6 +1382,14 @@ document.getElementById('toggleBonesBtn').addEventListener('click', ()=>{
   const panel = document.getElementById('bonePanel');
   panel.classList.toggle('hidden');
   setTimeout(onResize, 300);
+});
+
+// Toggle points
+document.getElementById('togglePointsBtn').addEventListener('click', ()=>{
+  showAllPoints = !showAllPoints;
+  if(pointsGroup){
+    pointsGroup.visible = showAllPoints;
+  }
 });
 
 // Export
