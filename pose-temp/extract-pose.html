@@ -867,6 +867,12 @@ let selectedBone = null;
 let currentPoseRotations = {};
 let animId;
 
+/* ── BONE INDICATOR ── */
+let boneIndicator = null;      // the glowing sphere
+let boneIndicatorRing = null;  // outer ring pulse
+let skeletonHelper = null;     // wireframe skeleton
+let clock = new THREE.Clock();
+
 /* ── ORBIT ── */
 let isDragging = false, lastMouse = {x:0,y:0};
 let sph = {theta:0, phi:1.1, radius:2.8};
@@ -908,6 +914,33 @@ function initThree(){
 
 function loop(){
   animId = requestAnimationFrame(loop);
+  const elapsed = clock.getElapsedTime();
+
+  // Animate bone indicator
+  if(boneIndicator && boneIndicator.visible){
+    // Pulse scale
+    const pulse = 1 + 0.3 * Math.sin(elapsed * 4);
+    boneIndicator.scale.setScalar(pulse);
+
+    // Outer ring pulse
+    if(boneIndicatorRing){
+      const ringPulse = 1 + 0.5 * Math.sin(elapsed * 3);
+      boneIndicatorRing.scale.setScalar(ringPulse);
+      boneIndicatorRing.material.opacity = 0.15 + 0.1 * Math.sin(elapsed * 4);
+    }
+
+    // Follow the selected bone's world position
+    if(selectedBone && boneMap[selectedBone]){
+      const worldPos = new THREE.Vector3();
+      boneMap[selectedBone].getWorldPosition(worldPos);
+      boneIndicator.position.copy(worldPos);
+      if(boneIndicatorRing) boneIndicatorRing.position.copy(worldPos);
+    }
+  }
+
+  // Update skeleton helper
+  if(skeletonHelper) skeletonHelper.update();
+
   renderer.render(scene, camera);
 }
 
@@ -943,10 +976,108 @@ function setupOrbit(canvas){
   },{passive:false});
 }
 
+/* ── BONE INDICATOR SETUP ── */
+function createBoneIndicator(){
+  // Remove old indicators
+  if(boneIndicator){ scene.remove(boneIndicator); boneIndicator = null; }
+  if(boneIndicatorRing){ scene.remove(boneIndicatorRing); boneIndicatorRing = null; }
+
+  // Inner glowing sphere
+  const sphereGeo = new THREE.SphereGeometry(0.018, 16, 16);
+  const sphereMat = new THREE.MeshBasicMaterial({
+    color: 0x0A84FF,
+    transparent: true,
+    opacity: 0.9,
+    depthTest: false
+  });
+  boneIndicator = new THREE.Mesh(sphereGeo, sphereMat);
+  boneIndicator.renderOrder = 999;
+  boneIndicator.visible = false;
+  scene.add(boneIndicator);
+
+  // Outer ring glow
+  const ringGeo = new THREE.RingGeometry(0.025, 0.04, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x0A84FF,
+    transparent: true,
+    opacity: 0.2,
+    side: THREE.DoubleSide,
+    depthTest: false
+  });
+  boneIndicatorRing = new THREE.Mesh(ringGeo, ringMat);
+  boneIndicatorRing.renderOrder = 998;
+  boneIndicatorRing.visible = false;
+  scene.add(boneIndicatorRing);
+}
+
+function showBoneIndicator(boneName){
+  const bone = boneMap[boneName];
+  if(!bone || !boneIndicator) return;
+
+  const worldPos = new THREE.Vector3();
+  bone.getWorldPosition(worldPos);
+
+  boneIndicator.position.copy(worldPos);
+  boneIndicator.visible = true;
+
+  if(boneIndicatorRing){
+    boneIndicatorRing.position.copy(worldPos);
+    // Face the ring towards camera
+    boneIndicatorRing.lookAt(camera.position);
+    boneIndicatorRing.visible = true;
+  }
+}
+
+function hideBoneIndicator(){
+  if(boneIndicator) boneIndicator.visible = false;
+  if(boneIndicatorRing) boneIndicatorRing.visible = false;
+}
+
+function createSkeletonHelper(){
+  // Remove old
+  if(skeletonHelper){ scene.remove(skeletonHelper); skeletonHelper = null; }
+
+  // Find the SkinnedMesh to get the skeleton
+  let skeleton = null;
+  model.traverse(o => {
+    if(o.isSkinnedMesh && o.skeleton) skeleton = o.skeleton;
+  });
+
+  if(!skeleton){
+    // Fallback: find root bone and create helper from it
+    let rootBone = null;
+    model.traverse(o => {
+      if(o.isBone && (!o.parent || !o.parent.isBone)) rootBone = o;
+    });
+    if(rootBone){
+      skeletonHelper = new THREE.SkeletonHelper(model);
+      skeletonHelper.material.linewidth = 1;
+      skeletonHelper.material.color.setHex(0x0A84FF);
+      skeletonHelper.material.transparent = true;
+      skeletonHelper.material.opacity = 0.25;
+      skeletonHelper.material.depthTest = false;
+      skeletonHelper.renderOrder = 900;
+      scene.add(skeletonHelper);
+    }
+  } else {
+    skeletonHelper = new THREE.SkeletonHelper(model);
+    skeletonHelper.material.linewidth = 1;
+    skeletonHelper.material.color.setHex(0x0A84FF);
+    skeletonHelper.material.transparent = true;
+    skeletonHelper.material.opacity = 0.25;
+    skeletonHelper.material.depthTest = false;
+    skeletonHelper.renderOrder = 900;
+    scene.add(skeletonHelper);
+  }
+}
+
 /* ── LOAD GLB ── */
 function loadGLBFromBuffer(buffer){
   return new Promise((resolve, reject) => {
     if(model){scene.remove(model); boneMap={}; currentPoseRotations={};}
+    // Clean up old helpers
+    if(skeletonHelper){ scene.remove(skeletonHelper); skeletonHelper = null; }
+    hideBoneIndicator();
 
     const loader = new THREE.GLTFLoader();
     loader.parse(buffer, '', gltf=>{
@@ -971,6 +1102,10 @@ function loadGLBFromBuffer(buffer){
           currentPoseRotations[o.name]={x:o.rotation.x,y:o.rotation.y,z:o.rotation.z};
         }
       });
+
+      // Create visual helpers
+      createBoneIndicator();
+      createSkeletonHelper();
 
       document.getElementById('exportBtn').disabled = false;
       populateBoneList('');
@@ -1018,6 +1153,7 @@ function selectBone(name){
   selectedBone=name;
   populateBoneList(document.getElementById('boneSearch').value);
   refreshBoneEditor(name);
+  showBoneIndicator(name);
 }
 
 function refreshBoneEditor(name){
