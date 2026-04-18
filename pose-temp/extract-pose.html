@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pose Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --border-focus: rgba(255,255,255,0.15);
+    --text-primary: rgba(255,255,255,0.92);
+    --text-secondary: rgba(255,255,255,0.55);
+    --text-tertiary: rgba(255,255,255,0.3);
+    --accent: #0A84FF;
+    --accent-glow: rgba(10,132,255,0.15);
+    --success: #30D158;
+    --success-glow: rgba(48,209,88,0.12);
+    --error: #FF453A;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-xs: 8px;
+    --transition: 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    --transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── TOP BAR ─── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, var(--accent), #BF5AF2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+
+  .status-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+  }
+
+  .status-chip.success {
+    background: var(--success-glow);
+    border-color: rgba(48,209,88,0.2);
+    color: var(--success);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    transition: background var(--transition);
+  }
+
+  .status-chip.success .status-dot {
+    background: var(--success);
+    box-shadow: 0 0 8px rgba(48,209,88,0.5);
+  }
+
+  .spacer { flex: 1; }
+
+  .topbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: -0.1px;
+  }
+
+  .topbar-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+  }
+
+  .topbar-btn.primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .topbar-btn.primary:hover {
+    background: #0977E5;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .topbar-btn svg {
+    width: 15px; height: 15px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  #main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+  /* ─── VIEWPORT ─── */
+  #viewport { flex: 1; position: relative; overflow: hidden; }
+  #threeCanvas { display: block; width: 100%; height: 100%; }
+
+  #hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ─── POSE INPUT PANEL (the star) ─── */
+  #posePanel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 520px;
+    max-width: 90vw;
+    background: rgba(28,28,30,0.92);
+    backdrop-filter: blur(60px) saturate(1.6);
+    -webkit-backdrop-filter: blur(60px) saturate(1.6);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
+    overflow: hidden;
+  }
+
+  #posePanel.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .panel-header {
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .panel-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    line-height: 1;
+    transition: all var(--transition);
+  }
+
+  .panel-close:hover {
+    background: rgba(255,255,255,0.15);
+    color: var(--text-primary);
+  }
+
+  .panel-subtitle {
+    padding: 6px 24px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex;
+    margin: 16px 24px 0;
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--radius-xs);
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: center;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .tab-btn.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text-primary);
+  }
+
+  /* Tab content */
+  .tab-content { padding: 16px 24px 24px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .drop-zone-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .drop-zone-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .drop-zone-hint {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .drop-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* Paste area */
+  .paste-area {
+    width: 100%;
+    min-height: 160px;
+    max-height: 240px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(125,211,252,0.9);
+    resize: none;
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .paste-area::placeholder {
+    color: var(--text-tertiary);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .paste-area:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  /* Apply button inside panel */
+  .apply-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: -0.1px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .apply-btn:hover {
+    background: #0977E5;
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  .apply-btn:active {
+    transform: translateY(0);
+  }
+
+  .apply-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ─── FILE NAME BADGE ─── */
+  .file-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: var(--success-glow);
+    border: 1px solid rgba(48,209,88,0.15);
+    border-radius: var(--radius-xs);
+    font-size: 12px;
+    color: var(--success);
+    font-weight: 500;
+  }
+
+  .file-badge.visible { display: flex; }
+
+  .file-badge svg {
+    width: 14px; height: 14px;
+    stroke: var(--success);
+    fill: none;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  /* ─── BONE PANEL ─── */
+  #bonePanel {
+    width: 260px;
+    flex-shrink: 0;
+    background: rgba(18,18,20,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(0);
+    transition: transform var(--transition), opacity var(--transition);
+  }
+
+  #bonePanel.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+  }
+
+  #bonePanelHeader {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  #boneSearch {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  #boneSearch::placeholder { color: var(--text-tertiary); }
+  #boneSearch:focus { border-color: var(--accent); }
+
+  #boneList { flex: 1; overflow-y: auto; padding: 4px 0; }
+
+  #boneList::-webkit-scrollbar { width: 4px; }
+  #boneList::-webkit-scrollbar-track { background: transparent; }
+  #boneList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .bone-item {
+    padding: 7px 16px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-left: 2px solid transparent;
+    transition: all 0.12s ease;
+    font-weight: 400;
+  }
+
+  .bone-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+  .bone-item.selected {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ─── BONE EDITOR ─── */
+  #boneEditor {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.2);
+  }
+
+  #boneEditorTitle {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .axis-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+  .axis-label {
+    font-size: 11px;
+    font-weight: 700;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    font-family: 'SF Mono', monospace;
+  }
+
+  .axis-label.x { color: #FF453A; }
+  .axis-label.y { color: #30D158; }
+  .axis-label.z { color: #0A84FF; }
+
+  .axis-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+    outline: none;
+  }
+
+  .axis-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+
+  .axis-val {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+    font-family: 'SF Mono', monospace;
+  }
+
+  #resetBoneBtn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    background: rgba(255,69,58,0.08);
+    border: 1px solid rgba(255,69,58,0.15);
+    color: var(--error);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  #resetBoneBtn:hover {
+    background: rgba(255,69,58,0.15);
+  }
+
+  /* ─── EXPORT MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(8px);
+    z-index: 9998;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal-overlay.visible { display: block; }
+
+  .modal-box {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background: rgba(28,28,30,0.95);
+    backdrop-filter: blur(60px);
+    -webkit-backdrop-filter: blur(60px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    width: 540px;
+    max-width: 95vw;
+    z-index: 9999;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    animation: modalIn 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  .modal-box.visible { display: block; }
+
+  .modal-box h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .modal-box .modal-subtitle {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+  }
+
+  .modal-box textarea {
+    width: 100%;
+    height: 220px;
+    background: rgba(0,0,0,0.4);
+    color: rgba(125,211,252,0.9);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+
+  .modal-actions button {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  #copyBtn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+  }
+
+  #copyBtn:hover { background: #0977E5; }
+
+  #exportClose {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  #exportClose:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+  /* ─── BACKDROP DIMMER ─── */
+  .backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 199;
+  }
+
+  .backdrop.visible { display: block; }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    padding: 10px 20px;
+    background: rgba(28,28,30,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    z-index: 10000;
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  .toast.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .toast-icon {
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-icon">◇</div>
+    Pose Studio
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="status-chip" id="statusChip">
+    <span class="status-dot"></span>
+    <span id="statusText">Loading…</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="topbar-btn" id="loadPoseBtn">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    Load Pose
+  </button>
+
+  <button class="topbar-btn" id="toggleBonesBtn">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    Bones
+  </button>
+
+  <button class="topbar-btn primary" id="exportBtn" disabled>
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export
+  </button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="viewport">
+    <canvas id="threeCanvas"></canvas>
+    <div id="hint">Drag to orbit · Scroll to zoom</div>
+  </div>
+
+  <!-- BONE PANEL -->
+  <div id="bonePanel" class="hidden">
+    <div id="bonePanelHeader">
+      Bones
+      <input id="boneSearch" type="text" placeholder="Search…"/>
+    </div>
+    <div id="boneList"></div>
+    <div id="boneEditor">
+      <div id="boneEditorTitle">Select a bone</div>
+      <div id="axisControls" style="display:none;">
+        <div class="axis-row">
+          <span class="axis-label x">X</span>
+          <input type="range" id="rx" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="rxVal">0.00</span>
+        </div>
+        <div class="axis-row">
+          <span class="axis-label y">Y</span>
+          <input type="range" id="ry" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="ryVal">0.00</span>
+        </div>
+        <div class="axis-row">
+          <span class="axis-label z">Z</span>
+          <input type="range" id="rz" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="rzVal">0.00</span>
+        </div>
+        <button id="resetBoneBtn">Reset Bone</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BACKDROP FOR POSE PANEL -->
+<div class="backdrop" id="backdrop"></div>
+
+<!-- POSE INPUT PANEL -->
+<div id="posePanel">
+  <div class="panel-header">
+    <span class="panel-title">Load Pose</span>
+    <button class="panel-close" id="panelClose">✕</button>
+  </div>
+  <div class="panel-subtitle">Drop a JSON file or paste pose data to apply it to the model.</div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="drop">Drop File</button>
+    <button class="tab-btn" data-tab="paste">Paste JSON</button>
+  </div>
+
+  <div class="tab-content">
+    <!-- Drop tab -->
+    <div class="tab-pane active" id="tab-drop">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" accept=".json" id="dropFileInput"/>
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-label">Drop your pose JSON here</div>
+        <div class="drop-zone-hint">or click to browse files</div>
+      </div>
+      <div class="file-badge" id="fileBadge">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="fileName"></span>
+      </div>
+      <button class="apply-btn" id="applyDropBtn" disabled>Apply Pose</button>
+    </div>
+
+    <!-- Paste tab -->
+    <div class="tab-pane" id="tab-paste">
+      <textarea class="paste-area" id="pasteArea" placeholder='Paste your pose JSON here…&#10;&#10;{&#10;  "mixamorig_Hips": { "x": 0, "y": 0, "z": 0 },&#10;  …&#10;}'></textarea>
+      <button class="apply-btn" id="applyPasteBtn" disabled>Apply Pose</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportOverlay"></div>
+<div class="modal-box" id="exportBox">
+  <h3>Pose JSON</h3>
+  <div class="modal-subtitle">Copy this to use in your project</div>
+  <textarea id="exportText" readonly></textarea>
+  <div class="modal-actions">
+    <button id="exportClose">Close</button>
+    <button id="copyBtn">Copy to Clipboard</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon"></span>
+  <span id="toastText"></span>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+(function(){
+
+/* ── STATE ── */
+let scene, camera, renderer, model;
+let boneMap = {};
+let selectedBone = null;
+let currentPoseRotations = {};
+let animId;
+
+/* ── ORBIT ── */
+let isDragging = false, lastMouse = {x:0,y:0};
+let sph = {theta:0, phi:1.1, radius:2.8};
+let target = new THREE.Vector3(0,1,0);
+
+/* ── INIT THREE ── */
+function initThree(){
+  const canvas = document.getElementById('threeCanvas');
+  const vp = document.getElementById('viewport');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0a);
+
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera = new THREE.PerspectiveCamera(45, w/h, 0.01, 100);
+  updateCamera();
+
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // Subtle gradient floor
+  const floorGeo = new THREE.PlaneGeometry(20, 20);
+  const floorMat = new THREE.MeshBasicMaterial({color:0x0d0d0d, transparent:true, opacity:0.5});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.01;
+  scene.add(floor);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const d = new THREE.DirectionalLight(0xffffff, 1.0); d.position.set(2,4,3); scene.add(d);
+  const f = new THREE.DirectionalLight(0xffffff, 0.25); f.position.set(-2,1,-3); scene.add(f);
+  const r = new THREE.DirectionalLight(0xeeeeff, 0.15); r.position.set(0,0,4); scene.add(r);
+
+  setupOrbit(canvas);
+  window.addEventListener('resize', onResize);
+  loop();
+}
+
+function loop(){
+  animId = requestAnimationFrame(loop);
+  renderer.render(scene, camera);
+}
+
+function onResize(){
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function updateCamera(){
+  camera.position.set(
+    target.x + sph.radius * Math.sin(sph.phi) * Math.sin(sph.theta),
+    target.y + sph.radius * Math.cos(sph.phi),
+    target.z + sph.radius * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(target);
+}
+
+function setupOrbit(canvas){
+  canvas.addEventListener('mousedown', e=>{isDragging=true;lastMouse={x:e.clientX,y:e.clientY};});
+  window.addEventListener('mouseup', ()=>isDragging=false);
+  window.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    sph.theta -= (e.clientX-lastMouse.x)*0.01;
+    sph.phi = Math.max(0.2,Math.min(Math.PI-0.2, sph.phi-(e.clientY-lastMouse.y)*0.01));
+    lastMouse = {x:e.clientX,y:e.clientY};
+    updateCamera();
+  });
+  canvas.addEventListener('wheel', e=>{
+    sph.radius = Math.max(0.5,Math.min(10,sph.radius+e.deltaY*0.005));
+    updateCamera(); e.preventDefault();
+  },{passive:false});
+}
+
+/* ── LOAD GLB ── */
+function loadGLBFromBuffer(buffer){
+  return new Promise((resolve, reject) => {
+    if(model){scene.remove(model); boneMap={}; currentPoseRotations={};}
+
+    const loader = new THREE.GLTFLoader();
+    loader.parse(buffer, '', gltf=>{
+      model = gltf.scene;
+      scene.add(model);
+
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const ctr = box.getCenter(new THREE.Vector3());
+      const sc = 1.8/Math.max(size.x,size.y,size.z);
+      model.scale.setScalar(sc);
+      model.position.sub(ctr.multiplyScalar(sc));
+      model.position.y -= box.min.y*sc;
+
+      target.set(0, size.y*sc*0.5, 0);
+      sph.radius = Math.max(size.x,size.y,size.z)*sc*1.6;
+      updateCamera();
+
+      model.traverse(o=>{
+        if(o.isBone){
+          boneMap[o.name]=o;
+          currentPoseRotations[o.name]={x:o.rotation.x,y:o.rotation.y,z:o.rotation.z};
+        }
+      });
+
+      document.getElementById('exportBtn').disabled = false;
+      populateBoneList('');
+      resolve(Object.keys(boneMap).length);
+    }, err => reject(err));
+  });
+}
+
+/* ── APPLY POSE ── */
+function applyPose(pose){
+  if(!model) return;
+
+  // Reset all bones
+  for(const name in boneMap){
+    boneMap[name].rotation.set(0,0,0);
+    currentPoseRotations[name]={x:0,y:0,z:0};
+  }
+
+  // Apply rotations
+  for(const name in pose){
+    const bone=boneMap[name]; if(!bone) continue;
+    bone.rotation.set(pose[name].x, pose[name].y, pose[name].z);
+    currentPoseRotations[name]={...pose[name]};
+  }
+
+  if(selectedBone) refreshBoneEditor(selectedBone);
+}
+
+/* ── BONE LIST ── */
+function populateBoneList(filter){
+  const list = document.getElementById('boneList');
+  list.innerHTML='';
+  const names = Object.keys(boneMap).filter(n=>n.toLowerCase().includes(filter.toLowerCase())).sort();
+  names.forEach(name=>{
+    const el=document.createElement('div');
+    el.className='bone-item'+(selectedBone===name?' selected':'');
+    el.textContent=name.replace('mixamorig_','');
+    el.title=name;
+    el.onclick=()=>selectBone(name);
+    list.appendChild(el);
+  });
+}
+
+function selectBone(name){
+  selectedBone=name;
+  populateBoneList(document.getElementById('boneSearch').value);
+  refreshBoneEditor(name);
+}
+
+function refreshBoneEditor(name){
+  const bone=boneMap[name]; if(!bone) return;
+  const rot=currentPoseRotations[name]||{x:0,y:0,z:0};
+  document.getElementById('boneEditorTitle').textContent=name.replace('mixamorig_','');
+  document.getElementById('axisControls').style.display='block';
+  setSlider('rx','rxVal',rot.x);
+  setSlider('ry','ryVal',rot.y);
+  setSlider('rz','rzVal',rot.z);
+}
+
+function setSlider(id,valId,v){
+  document.getElementById(id).value=v;
+  document.getElementById(valId).textContent=v.toFixed(2);
+}
+
+function onAxisChange(){
+  if(!selectedBone||!boneMap[selectedBone]) return;
+  const x=parseFloat(document.getElementById('rx').value);
+  const y=parseFloat(document.getElementById('ry').value);
+  const z=parseFloat(document.getElementById('rz').value);
+  document.getElementById('rxVal').textContent=x.toFixed(2);
+  document.getElementById('ryVal').textContent=y.toFixed(2);
+  document.getElementById('rzVal').textContent=z.toFixed(2);
+  boneMap[selectedBone].rotation.set(x,y,z);
+  currentPoseRotations[selectedBone]={x,y,z};
+}
+
+/* ── EXPORT ── */
+function exportPose(){
+  const out={};
+  for(const name in currentPoseRotations){
+    const r=currentPoseRotations[name];
+    if(Math.abs(r.x)>0.001||Math.abs(r.y)>0.001||Math.abs(r.z)>0.001){
+      out[name]={x:+r.x.toFixed(4),y:+r.y.toFixed(4),z:+r.z.toFixed(4)};
+    }
+  }
+  document.getElementById('exportText').value=JSON.stringify(out,null,2);
+  document.getElementById('exportOverlay').classList.add('visible');
+  document.getElementById('exportBox').classList.add('visible');
+}
+
+/* ── STATUS ── */
+function setStatus(msg, success=false){
+  const chip = document.getElementById('statusChip');
+  document.getElementById('statusText').textContent = msg;
+  chip.classList.toggle('success', success);
+}
+
+/* ── TOAST ── */
+function showToast(icon, msg){
+  const toast = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  toast.querySelector('.toast-icon').textContent = icon;
+  toast.classList.add('visible');
+  setTimeout(()=> toast.classList.remove('visible'), 2500);
+}
+
+/* ── PANEL TOGGLE ── */
+function openPosePanel(){
+  document.getElementById('posePanel').classList.add('visible');
+  document.getElementById('backdrop').classList.add('visible');
+}
+
+function closePosePanel(){
+  document.getElementById('posePanel').classList.remove('visible');
+  document.getElementById('backdrop').classList.remove('visible');
+}
+
+let pendingDropPose = null;
+
+/* ── WIRE UP ── */
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Load Pose button
+document.getElementById('loadPoseBtn').addEventListener('click', openPosePanel);
+document.getElementById('panelClose').addEventListener('click', closePosePanel);
+document.getElementById('backdrop').addEventListener('click', closePosePanel);
+
+// Drop zone
+const dropZone = document.getElementById('dropZone');
+const dropFileInput = document.getElementById('dropFileInput');
+
+dropZone.addEventListener('dragover', e=>{
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', ()=>{
+  dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) handleDropFile(file);
+});
+
+dropFileInput.addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(file) handleDropFile(file);
+});
+
+function handleDropFile(file){
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      pendingDropPose = JSON.parse(ev.target.result);
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileBadge').classList.add('visible');
+      document.getElementById('applyDropBtn').disabled = false;
+    } catch(err) {
+      showToast('⚠️', 'Invalid JSON file');
+      pendingDropPose = null;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Apply from drop
+document.getElementById('applyDropBtn').addEventListener('click', ()=>{
+  if(!pendingDropPose || !model) return;
+  applyPose(pendingDropPose);
+  closePosePanel();
+  setStatus('Pose applied', true);
+  showToast('✨', 'Pose applied successfully');
+});
+
+// Paste area
+const pasteArea = document.getElementById('pasteArea');
+pasteArea.addEventListener('input', ()=>{
+  const v = pasteArea.value.trim();
+  document.getElementById('applyPasteBtn').disabled = !v;
+});
+
+document.getElementById('applyPasteBtn').addEventListener('click', ()=>{
+  try {
+    const pose = JSON.parse(pasteArea.value);
+    applyPose(pose);
+    closePosePanel();
+    setStatus('Pose applied', true);
+    showToast('✨', 'Pose applied successfully');
+  } catch(err) {
+    showToast('⚠️', 'Invalid JSON — check your syntax');
+  }
+});
+
+// Toggle bone panel
+document.getElementById('toggleBonesBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('bonePanel');
+  panel.classList.toggle('hidden');
+  setTimeout(onResize, 300);
+});
+
+// Export
+document.getElementById('exportBtn').addEventListener('click', exportPose);
+
+document.getElementById('exportClose').addEventListener('click', ()=>{
+  document.getElementById('exportOverlay').classList.remove('visible');
+  document.getElementById('exportBox').classList.remove('visible');
+});
+
+document.getElementById('exportOverlay').addEventListener('click', ()=>{
+  document.getElementById('exportOverlay').classList.remove('visible');
+  document.getElementById('exportBox').classList.remove('visible');
+});
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('exportText').value;
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('📋', 'Copied to clipboard');
+  });
+});
+
+// Axis sliders
+['rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',onAxisChange));
+
+// Bone search
+document.getElementById('boneSearch').addEventListener('input',e=>populateBoneList(e.target.value));
+
+// Reset bone
+document.getElementById('resetBoneBtn').addEventListener('click',()=>{
+  if(!selectedBone||!boneMap[selectedBone]) return;
+  boneMap[selectedBone].rotation.set(0,0,0);
+  currentPoseRotations[selectedBone]={x:0,y:0,z:0};
+  setSlider('rx','rxVal',0);
+  setSlider('ry','ryVal',0);
+  setSlider('rz','rzVal',0);
+});
+
+// Keyboard shortcut: ESC to close panels
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape'){
+    closePosePanel();
+    document.getElementById('exportOverlay').classList.remove('visible');
+    document.getElementById('exportBox').classList.remove('visible');
+  }
+});
+
+/* ── AUTO-LOAD DEFAULTS ── */
+async function autoLoadDefaults(){
+  try {
+    setStatus('Loading model…');
+
+    const glbRes = await fetch('lady-x-bot.glb');
+    if(!glbRes.ok) throw new Error('Default GLB not found');
+    const glbBuffer = await glbRes.arrayBuffer();
+
+    const boneCount = await loadGLBFromBuffer(glbBuffer);
+    setStatus(boneCount + ' bones', true);
+
+    // Load default pose
+    try {
+      const poseRes = await fetch('extract-t-pose.json');
+      if(poseRes.ok){
+        const pose = await poseRes.json();
+        applyPose(pose);
+        setStatus('Ready · T-pose applied', true);
+      }
+    } catch(e){}
+
+  } catch(err){
+    setStatus('Upload a GLB to begin');
+  }
+}
+
+/* ── START ── */
+window.addEventListener('DOMContentLoaded', ()=>{
+  initThree();
+  autoLoadDefaults();
+});
+
+if(document.readyState!=='loading'){
+  initThree();
+  autoLoadDefaults();
+}
+
+})();
+</script>
+</body>
+</html>
