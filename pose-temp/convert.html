@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediaPipe → Mixamo Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.08);
+      --border-focus: rgba(255,255,255,0.15);
+      --text-primary: rgba(255,255,255,0.92);
+      --text-secondary: rgba(255,255,255,0.55);
+      --text-tertiary: rgba(255,255,255,0.3);
+      --accent: #0A84FF;
+      --accent-glow: rgba(10,132,255,0.15);
+      --success: #30D158;
+      --success-glow: rgba(48,209,88,0.12);
+      --error: #FF453A;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
+      --transition: 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(40px) saturate(1.8);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 24px; height: 24px;
+      background: linear-gradient(135deg, var(--accent), #BF5AF2);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .spacer { flex: 1; }
+
+    .topbar-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .topbar-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text-primary);
+      border-color: var(--border-focus);
+    }
+
+    .topbar-btn.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .topbar-btn.primary:hover {
+      background: #0977E5;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .topbar-btn.primary:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .topbar-btn svg {
+      width: 15px; height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    #viewport { flex: 1; position: relative; overflow: hidden; min-width: 0; }
+    #threeCanvas { display: block; width: 100%; height: 100%; }
+
+    #hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      pointer-events: none;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    #outputPanel {
+      width: 380px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: rgba(18,18,20,0.95);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .bone-count {
+      font-size: 11px;
+      padding: 3px 8px;
+      background: var(--accent-glow);
+      color: var(--accent);
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .tab-bar {
+      display: flex;
+      padding: 4px 18px;
+      gap: 2px;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      text-align: center;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .tab-btn.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text-primary); }
+
+    .tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    .tab-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .tab-pane.active { display: flex; }
+
+    .paste-area {
+      flex: 1;
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: rgba(125,211,252,0.9);
+      resize: none;
+      outline: none;
+    }
+
+    .paste-area::placeholder {
+      color: var(--text-tertiary);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+    }
+
+    .output-code {
+      flex: 1;
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: none;
+      padding: 14px 18px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: rgba(48,209,88,0.9);
+      resize: none;
+      outline: none;
+      overflow: auto;
+    }
+
+    .action-bar {
+      padding: 12px 18px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .action-btn.convert {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .action-btn.convert:hover { background: #0977E5; box-shadow: 0 4px 20px var(--accent-glow); }
+    .action-btn.convert:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+
+    .action-btn.copy {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .action-btn.copy:hover { background: var(--surface-hover); color: var(--text-primary); }
+    .action-btn.copy:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .info-bar {
+      padding: 8px 18px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+    }
+
+    .info-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+
+    .info-dot.success { background: var(--success); box-shadow: 0 0 6px rgba(48,209,88,0.5); }
+    .info-dot.error { background: var(--error); }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      padding: 10px 20px;
+      background: rgba(28,28,30,0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      z-index: 10000;
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-icon">⟳</div>
+    MediaPipe → Mixamo
+  </div>
+  <div class="spacer"></div>
+  <button class="topbar-btn" id="loadSampleBtn">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    Load Sample
+  </button>
+  <button class="topbar-btn primary" id="downloadBtn" disabled>
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download JSON
+  </button>
+</div>
+
+<div id="main">
+  <div id="viewport">
+    <canvas id="threeCanvas"></canvas>
+    <div id="hint">Drag to orbit · Scroll to zoom</div>
+  </div>
+
+  <div id="outputPanel">
+    <div class="panel-header">
+      <span class="panel-title">Converter</span>
+      <span class="bone-count" id="boneCount">Loading…</span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="input">MediaPipe Input</button>
+      <button class="tab-btn" data-tab="output">Mixamo Output</button>
+    </div>
+
+    <div class="tab-content">
+      <div class="tab-pane active" id="tab-input">
+        <textarea class="paste-area" id="inputArea" placeholder="Paste your MediaPipe pose JSON here...
+
+Expected format:
+[{
+  &quot;landmarks&quot;: { ... },
+  &quot;worldLandmarks&quot;: { ... }
+}]"></textarea>
+      </div>
+      <div class="tab-pane" id="tab-output">
+        <textarea class="output-code" id="outputArea" readonly placeholder="Converted Mixamo JSON will appear here..."></textarea>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="action-btn convert" id="convertBtn" disabled>Convert to Mixamo</button>
+      <button class="action-btn copy" id="copyBtn" disabled>Copy</button>
+    </div>
+
+    <div class="info-bar">
+      <span class="info-dot" id="statusDot"></span>
+      <span id="statusText">Loading model…</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastIcon"></span>
+  <span id="toastText"></span>
+</div>
+
+<!-- Three.js r128 (same as extract-pose.html) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+(function(){
+
+/* =============================================
+   STATE
+   ============================================= */
+
+let scene, camera, renderer, model;
+let boneMap = {};            // name → THREE.Bone
+let tPoseData = {};          // T-pose euler rotations from JSON
+let currentMixamoOutput = null;
+let skeletonHelper = null;
+
+// Camera orbit
+let isDragging = false, lastMouse = {x:0, y:0};
+let sph = {theta: 0.3, phi: 1.1, radius: 2.8};
+let target = new THREE.Vector3(0, 1, 0);
+
+
+/* =============================================
+   THREE.JS SETUP
+   ============================================= */
+
+function initThree() {
+  const canvas = document.getElementById('threeCanvas');
+  const vp = document.getElementById('viewport');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0a);
+
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera = new THREE.PerspectiveCamera(45, w/h, 0.01, 100);
+  updateCamera();
+
+  renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(20, 20);
+  const floorMat = new THREE.MeshBasicMaterial({color: 0x0d0d0d, transparent: true, opacity: 0.5});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.01;
+  scene.add(floor);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const d = new THREE.DirectionalLight(0xffffff, 1.0); d.position.set(2,4,3); scene.add(d);
+  const f = new THREE.DirectionalLight(0xffffff, 0.25); f.position.set(-2,1,-3); scene.add(f);
+
+  setupOrbit(canvas);
+  window.addEventListener('resize', onResize);
+  loop();
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (skeletonHelper) skeletonHelper.update();
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function updateCamera() {
+  camera.position.set(
+    target.x + sph.radius * Math.sin(sph.phi) * Math.sin(sph.theta),
+    target.y + sph.radius * Math.cos(sph.phi),
+    target.z + sph.radius * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(target);
+}
+
+function setupOrbit(canvas) {
+  canvas.addEventListener('mousedown', e => {
+    isDragging = true;
+    lastMouse = {x: e.clientX, y: e.clientY};
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    sph.theta -= (e.clientX - lastMouse.x) * 0.01;
+    sph.phi = Math.max(0.2, Math.min(Math.PI - 0.2, sph.phi - (e.clientY - lastMouse.y) * 0.01));
+    lastMouse = {x: e.clientX, y: e.clientY};
+    updateCamera();
+  });
+  canvas.addEventListener('wheel', e => {
+    sph.radius = Math.max(0.5, Math.min(10, sph.radius + e.deltaY * 0.005));
+    updateCamera();
+    e.preventDefault();
+  }, {passive: false});
+}
+
+
+/* =============================================
+   MODEL LOADING
+   ============================================= */
+
+async function loadModelAndTPose() {
+  setStatus('Loading model…');
+
+  try {
+    // Attempt automatic load
+    const glbRes = await fetch('lady-x-bot.glb');
+    const tposeRes = await fetch('extract-t-pose.json');
+    
+    if (glbRes.ok && tposeRes.ok) {
+      const glbBuffer = await glbRes.arrayBuffer();
+      tPoseData = await tposeRes.json();
+      await parseGLB(glbBuffer);
+      finishLoading();
+    } else {
+      throw new Error('Fallback to manual load');
+    }
+  } catch (err) {
+    console.warn('Auto-load failed (likely CORS). Enable manual upload.', err);
+    setStatus('CORS Error: Please drag & drop lady-x-bot.glb here', 'error');
+    setupFileHandlers();
+  }
+}
+
+async function parseGLB(buffer) {
+  return new Promise((resolve, reject) => {
+    const loader = new THREE.GLTFLoader();
+    loader.parse(buffer, '', gltf => {
+      if (model) scene.remove(model);
+      model = gltf.scene;
+      scene.add(model);
+
+      // Scale & center
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const ctr = box.getCenter(new THREE.Vector3());
+      const sc = 1.8 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(sc);
+      model.position.sub(ctr.multiplyScalar(sc));
+      model.position.y -= box.min.y * sc;
+
+      target.set(0, size.y * sc * 0.5, 0);
+      sph.radius = Math.max(size.x, size.y, size.z) * sc * 1.6;
+      updateCamera();
+
+      // Build bone map
+      boneMap = {};
+      model.traverse(o => {
+        if (o.isBone) boneMap[o.name] = o;
+      });
+
+      // Skeleton helper
+      if (skeletonHelper) scene.remove(skeletonHelper);
+      skeletonHelper = new THREE.SkeletonHelper(model);
+      skeletonHelper.material.linewidth = 1;
+      skeletonHelper.material.color.setHex(0x0A84FF);
+      skeletonHelper.material.transparent = true;
+      skeletonHelper.material.opacity = 0.25;
+      skeletonHelper.material.depthTest = false;
+      skeletonHelper.renderOrder = 900;
+      scene.add(skeletonHelper);
+
+      resolve();
+    }, reject);
+  });
+}
+
+function finishLoading() {
+  applyTPose();
+  const boneCount = Object.keys(boneMap).length;
+  document.getElementById('boneCount').textContent = boneCount + ' bones';
+  document.getElementById('convertBtn').disabled = false;
+  setStatus('Ready — ' + boneCount + ' bones loaded', 'success');
+}
+
+function setupFileHandlers() {
+  const vp = document.getElementById('viewport');
+  vp.addEventListener('dragover', e => { e.preventDefault(); vp.style.background = 'rgba(10,132,255,0.05)'; });
+  vp.addEventListener('dragleave', () => { vp.style.background = ''; });
+  vp.addEventListener('drop', async e => {
+    e.preventDefault();
+    vp.style.background = '';
+    
+    for (const file of e.dataTransfer.files) {
+      if (file.name.endsWith('.glb')) {
+        setStatus('Loading GLB…');
+        const buf = await file.arrayBuffer();
+        await parseGLB(buf);
+        if (Object.keys(tPoseData).length > 0) finishLoading();
+        else setStatus('Now drop extract-t-pose.json', 'warning');
+      } else if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        try {
+          const json = JSON.parse(text);
+          if (json.mixamorig_Hips) {
+            tPoseData = json;
+            if (model) finishLoading();
+            else setStatus('Now drop lady-x-bot.glb', 'warning');
+          }
+        } catch(e) {}
+      }
+    }
+  });
+}
+
+function applyTPose() {
+  if (!model) return;
+
+  // Reset ALL bones to zero
+  for (const name in boneMap) {
+    boneMap[name].rotation.set(0, 0, 0);
+  }
+
+  // Apply T-pose rotations from JSON
+  for (const name in tPoseData) {
+    if (boneMap[name]) {
+      boneMap[name].rotation.set(tPoseData[name].x, tPoseData[name].y, tPoseData[name].z);
+    }
+  }
+
+  model.updateMatrixWorld(true);
+}
+
+
+/* =============================================
+   COORDINATE CONVERSION
+   
+   MediaPipe worldLandmarks:
+     X = person's left (positive), right (negative)
+     Y = DOWN (positive), UP (negative)  
+     Z = AWAY from camera (positive), TOWARD camera (negative)
+   
+   Three.js / Mixamo:
+     X = right (positive)
+     Y = UP (positive)
+     Z = TOWARD camera (positive)
+   
+   Conversion: X stays, Y negated, Z negated
+   ============================================= */
+
+function mp(landmark) {
+  return new THREE.Vector3(landmark.x, -landmark.y, -landmark.z);
+}
+
+function mpMid(wl, a, b) {
+  return mp(wl[a]).add(mp(wl[b])).multiplyScalar(0.5);
+}
+
+
+/* =============================================
+   PREFERRED CHILD MAP
+   
+   For each bone, which child determines
+   the bone's "direction" (head-to-tail).
+   Needed because some bones have multiple children
+   (e.g., Spine2 → Neck, LeftShoulder, RightShoulder).
+   ============================================= */
+
+const PREFERRED_CHILD = {
+  'mixamorig_Hips':          'mixamorig_Spine',
+  'mixamorig_Spine':         'mixamorig_Spine1',
+  'mixamorig_Spine1':        'mixamorig_Spine2',
+  'mixamorig_Spine2':        'mixamorig_Neck',
+  'mixamorig_Neck':          'mixamorig_Head',
+  'mixamorig_Head':          'mixamorig_HeadTop_End',
+  'mixamorig_LeftShoulder':  'mixamorig_LeftArm',
+  'mixamorig_LeftArm':       'mixamorig_LeftForeArm',
+  'mixamorig_LeftForeArm':   'mixamorig_LeftHand',
+  'mixamorig_RightShoulder': 'mixamorig_RightArm',
+  'mixamorig_RightArm':      'mixamorig_RightForeArm',
+  'mixamorig_RightForeArm':  'mixamorig_RightHand',
+  'mixamorig_LeftUpLeg':     'mixamorig_LeftLeg',
+  'mixamorig_LeftLeg':       'mixamorig_LeftFoot',
+  'mixamorig_LeftFoot':      'mixamorig_LeftToeBase',
+  'mixamorig_RightUpLeg':    'mixamorig_RightLeg',
+  'mixamorig_RightLeg':      'mixamorig_RightFoot',
+  'mixamorig_RightFoot':     'mixamorig_RightToeBase',
+};
+
+
+/* =============================================
+   GET BONE WORLD DIRECTION
+   
+   Direction from bone to its next child in the chain.
+   Uses actual model positions (affected by current rotations).
+   ============================================= */
+
+function getBoneWorldDirection(bone) {
+  // Try preferred child first
+  let child = null;
+  const preferred = PREFERRED_CHILD[bone.name];
+
+  // Handle case where preferred child might not exist
+  // (e.g. Spine1 might not exist, fall through to Spine2)
+  if (preferred && boneMap[preferred]) {
+    child = boneMap[preferred];
+  } else {
+    // Try without the specific name — use fallbacks
+    // For Spine, if Spine1 doesn't exist, try Spine2
+    if (bone.name === 'mixamorig_Spine' && boneMap['mixamorig_Spine2']) {
+      child = boneMap['mixamorig_Spine2'];
+    } else {
+      // Use first bone child
+      for (const c of bone.children) {
+        if (c.isBone) { child = c; break; }
+      }
+    }
+  }
+
+  if (!child) return null;
+
+  const bonePos = new THREE.Vector3();
+  const childPos = new THREE.Vector3();
+  bone.getWorldPosition(bonePos);
+  child.getWorldPosition(childPos);
+
+  const dir = childPos.sub(bonePos);
+  if (dir.lengthSq() < 0.000001) return null;
+  return dir.normalize();
+}
+
+
+/* =============================================
+   CORE CONVERSION ALGORITHM
+   
+   For each bone (processed in hierarchy order):
+   1. Get the bone's CURRENT world direction (in T-pose, 
+      modified by already-processed parent rotations)
+   2. Get the TARGET world direction from MediaPipe landmarks
+   3. Compute world-space delta quaternion (currentDir → targetDir)
+   4. Convert this delta to BONE-LOCAL space using parent's world quaternion
+   5. Multiply with current local rotation to get new local rotation
+   6. Apply to bone and update world matrices
+   
+   This properly handles the hierarchical chain:
+   after rotating a parent, children automatically get the
+   correct starting frame for their own delta computation.
+   ============================================= */
+
+function convertPoseFromMediaPipe(worldLandmarks) {
+  const wl = worldLandmarks;
+
+  // Validate required landmarks
+  const required = [
+    'left_hip', 'right_hip', 'left_shoulder', 'right_shoulder',
+    'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist',
+    'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
+    'nose', 'left_foot_index', 'right_foot_index'
+  ];
+  for (const name of required) {
+    if (!wl[name]) throw new Error('Missing landmark: ' + name);
+  }
+
+  // Reset model to T-pose
+  applyTPose();
+
+  // Pre-compute target positions from MediaPipe
+  const hipCenter       = mpMid(wl, 'left_hip', 'right_hip');
+  const shoulderCenter  = mpMid(wl, 'left_shoulder', 'right_shoulder');
+  const spineDir        = shoulderCenter.clone().sub(hipCenter).normalize();
+
+  const lShoulderPos = mp(wl.left_shoulder);
+  const lElbowPos    = mp(wl.left_elbow);
+  const lWristPos    = mp(wl.left_wrist);
+
+  const rShoulderPos = mp(wl.right_shoulder);
+  const rElbowPos    = mp(wl.right_elbow);
+  const rWristPos    = mp(wl.right_wrist);
+
+  const lHipPos   = mp(wl.left_hip);
+  const lKneePos  = mp(wl.left_knee);
+  const lAnklePos = mp(wl.left_ankle);
+  const lFootPos  = mp(wl.left_foot_index);
+
+  const rHipPos   = mp(wl.right_hip);
+  const rKneePos  = mp(wl.right_knee);
+  const rAnklePos = mp(wl.right_ankle);
+  const rFootPos  = mp(wl.right_foot_index);
+
+  const nosePos = mp(wl.nose);
+
+  // Target directions for each bone
+  const targetDirs = {
+    // Spine chain — all point from hip center toward shoulder center
+    'mixamorig_Hips':   spineDir.clone(),
+    'mixamorig_Spine':  spineDir.clone(),
+    'mixamorig_Spine1': spineDir.clone(),
+    'mixamorig_Spine2': spineDir.clone(),
+
+    // Neck/Head — from shoulder center toward nose
+    'mixamorig_Neck': nosePos.clone().sub(shoulderCenter).normalize(),
+    'mixamorig_Head': nosePos.clone().sub(shoulderCenter).normalize(),
+
+    // Left arm chain
+    'mixamorig_LeftArm':     lElbowPos.clone().sub(lShoulderPos).normalize(),
+    'mixamorig_LeftForeArm': lWristPos.clone().sub(lElbowPos).normalize(),
+
+    // Right arm chain
+    'mixamorig_RightArm':     rElbowPos.clone().sub(rShoulderPos).normalize(),
+    'mixamorig_RightForeArm': rWristPos.clone().sub(rElbowPos).normalize(),
+
+    // Left leg chain
+    'mixamorig_LeftUpLeg': lKneePos.clone().sub(lHipPos).normalize(),
+    'mixamorig_LeftLeg':   lAnklePos.clone().sub(lKneePos).normalize(),
+    'mixamorig_LeftFoot':  lFootPos.clone().sub(lAnklePos).normalize(),
+
+    // Right leg chain
+    'mixamorig_RightUpLeg': rKneePos.clone().sub(rHipPos).normalize(),
+    'mixamorig_RightLeg':   rAnklePos.clone().sub(rKneePos).normalize(),
+    'mixamorig_RightFoot':  rFootPos.clone().sub(rAnklePos).normalize(),
+  };
+
+  const result = {};
+
+  // Process bones in strict hierarchy order (parents before children)
+  const processOrder = [
+    // Root / Spine chain
+    'mixamorig_Hips',
+    'mixamorig_Spine',
+    'mixamorig_Spine1',
+    'mixamorig_Spine2',
+    // Head
+    'mixamorig_Neck',
+    'mixamorig_Head',
+    // Shoulders (keep T-pose — these are structural clavicle rotations)
+    'mixamorig_LeftShoulder',
+    'mixamorig_RightShoulder',
+    // Left arm
+    'mixamorig_LeftArm',
+    'mixamorig_LeftForeArm',
+    // Right arm
+    'mixamorig_RightArm',
+    'mixamorig_RightForeArm',
+    // Left leg
+    'mixamorig_LeftUpLeg',
+    'mixamorig_LeftLeg',
+    'mixamorig_LeftFoot',
+    // Right leg
+    'mixamorig_RightUpLeg',
+    'mixamorig_RightLeg',
+    'mixamorig_RightFoot',
+  ];
+
+  for (const boneName of processOrder) {
+    const bone = boneMap[boneName];
+    if (!bone) continue;
+
+    // ── SHOULDERS: keep T-pose values (structural clavicle orientation) ──
+    if (boneName === 'mixamorig_LeftShoulder' || boneName === 'mixamorig_RightShoulder') {
+      const tRot = tPoseData[boneName];
+      if (tRot) {
+        result[boneName] = { x: tRot.x, y: tRot.y, z: tRot.z };
+        // Already set from applyTPose(), no change needed
+      }
+      continue;
+    }
+
+    // ── Get target direction ──
+    const targetDir = targetDirs[boneName];
+    if (!targetDir) continue;
+
+    // ── Get current bone direction (from model in current state) ──
+    const currentDir = getBoneWorldDirection(bone);
+    if (!currentDir) {
+      console.warn('Could not compute direction for', boneName);
+      continue;
+    }
+
+    // ── Check if already aligned (avoid NaN from nearly-parallel vectors) ──
+    const dot = currentDir.dot(targetDir);
+    if (dot > 0.9999) {
+      // Already aligned — keep current rotation
+      result[boneName] = {
+        x: Math.round(bone.rotation.x * 10000) / 10000,
+        y: Math.round(bone.rotation.y * 10000) / 10000,
+        z: Math.round(bone.rotation.z * 10000) / 10000,
+      };
+      continue;
+    }
+
+    // ── Compute world-space delta quaternion ──
+    const deltaQ = new THREE.Quaternion();
+    if (dot < -0.9999) {
+      // Nearly opposite — choose an arbitrary perpendicular axis
+      const perp = Math.abs(currentDir.x) < 0.9
+        ? new THREE.Vector3(1, 0, 0)
+        : new THREE.Vector3(0, 1, 0);
+      const axis = new THREE.Vector3().crossVectors(currentDir, perp).normalize();
+      deltaQ.setFromAxisAngle(axis, Math.PI);
+    } else {
+      deltaQ.setFromUnitVectors(currentDir, targetDir);
+    }
+
+    // ── Convert world-space delta to bone-local space ──
+    // If bone has a parent, transform: localDelta = Wp^(-1) * deltaQ * Wp
+    // This conjugation converts the rotation from world frame to parent's local frame
+    const parentWorldQ = new THREE.Quaternion();
+    if (bone.parent) {
+      bone.parent.getWorldQuaternion(parentWorldQ);
+    }
+
+    const localDelta = parentWorldQ.clone().invert()
+      .multiply(deltaQ)
+      .multiply(parentWorldQ);
+
+    // ── New local rotation = localDelta * currentLocalRotation ──
+    const currentLocalQ = bone.quaternion.clone();
+    const newLocalQ = localDelta.multiply(currentLocalQ);
+
+    // ── Apply to bone ──
+    bone.quaternion.copy(newLocalQ);
+    model.updateMatrixWorld(true);
+
+    // ── Extract Euler angles ──
+    const euler = new THREE.Euler();
+    euler.setFromQuaternion(newLocalQ, bone.rotation.order || 'XYZ');
+
+    result[boneName] = {
+      x: Math.round(euler.x * 10000) / 10000,
+      y: Math.round(euler.y * 10000) / 10000,
+      z: Math.round(euler.z * 10000) / 10000,
+    };
+
+    console.log(`${boneName}: current=${fmt(currentDir)} target=${fmt(targetDir)} → euler=(${result[boneName].x}, ${result[boneName].y}, ${result[boneName].z})`);
+  }
+
+  // ── Add hand/finger bones from T-pose defaults ──
+  // MediaPipe body pose has no finger detail, so we use the T-pose finger rotations
+  for (const name in tPoseData) {
+    if (!result[name] && boneMap[name]) {
+      // Only add hand/finger and toe bones that weren't already computed
+      if (name.includes('Hand') || name.includes('Thumb') ||
+          name.includes('Index') || name.includes('Middle') ||
+          name.includes('Ring') || name.includes('Pinky') ||
+          name.includes('Toe')) {
+        result[name] = { ...tPoseData[name] };
+      }
+    }
+  }
+
+  return result;
+}
+
+function fmt(v) {
+  return `(${v.x.toFixed(3)}, ${v.y.toFixed(3)}, ${v.z.toFixed(3)})`;
+}
+
+
+/* =============================================
+   UI WIRING
+   ============================================= */
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Input area
+const inputArea = document.getElementById('inputArea');
+inputArea.addEventListener('input', () => {
+  document.getElementById('convertBtn').disabled = !inputArea.value.trim();
+});
+
+// Convert button
+document.getElementById('convertBtn').addEventListener('click', doConvert);
+
+function doConvert() {
+  const raw = inputArea.value.trim();
+  if (!raw || !model) return;
+
+  try {
+    const poseData = JSON.parse(raw);
+    const frame = Array.isArray(poseData) ? poseData[0] : poseData;
+    const wl = frame.worldLandmarks;
+    if (!wl) throw new Error('Missing worldLandmarks in pose data');
+
+    const mixamo = convertPoseFromMediaPipe(wl);
+    currentMixamoOutput = mixamo;
+
+    // Show output
+    const outputStr = JSON.stringify(mixamo, null, 2);
+    document.getElementById('outputArea').value = outputStr;
+
+    // Count bones
+    const boneCount = Object.keys(mixamo).length;
+    document.getElementById('boneCount').textContent = boneCount + ' bones mapped';
+
+    // Switch to output tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="output"]').classList.add('active');
+    document.getElementById('tab-output').classList.add('active');
+
+    // Enable buttons
+    document.getElementById('copyBtn').disabled = false;
+    document.getElementById('downloadBtn').disabled = false;
+
+    setStatus('Converted ' + boneCount + ' bones', 'success');
+    showToast('✨', 'Conversion successful — ' + boneCount + ' bones');
+
+  } catch (err) {
+    setStatus('Error: ' + err.message, 'error');
+    showToast('⚠️', err.message);
+    console.error(err);
+  }
+}
+
+// Copy
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const text = document.getElementById('outputArea').value;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋', 'Copied to clipboard');
+  });
+});
+
+// Download
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!currentMixamoOutput) return;
+  const blob = new Blob([JSON.stringify(currentMixamoOutput, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mixamo-pose.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾', 'Downloaded mixamo-pose.json');
+});
+
+// Load sample
+document.getElementById('loadSampleBtn').addEventListener('click', () => {
+  const sampleData = [{"landmarks":{"nose":{"x":0.417246,"y":0.086648,"z":-0.386857,"visibility":1},"left_eye_inner":{"x":0.435944,"y":0.068587,"z":-0.366378,"visibility":1},"left_eye":{"x":0.44682,"y":0.06836,"z":-0.366378,"visibility":1},"left_eye_outer":{"x":0.456642,"y":0.068278,"z":-0.366378,"visibility":1},"right_eye_inner":{"x":0.407547,"y":0.070281,"z":-0.352247,"visibility":1},"right_eye":{"x":0.399963,"y":0.070946,"z":-0.352247,"visibility":1},"right_eye_outer":{"x":0.392015,"y":0.07177,"z":-0.352042,"visibility":1},"left_ear":{"x":0.475932,"y":0.077936,"z":-0.215239,"visibility":0.9999},"right_ear":{"x":0.391212,"y":0.080002,"z":-0.148578,"visibility":0.9999},"mouth_left":{"x":0.440815,"y":0.107798,"z":-0.327467,"visibility":1},"mouth_right":{"x":0.406666,"y":0.108743,"z":-0.308011,"visibility":1},"left_shoulder":{"x":0.567546,"y":0.193753,"z":-0.153391,"visibility":1},"right_shoulder":{"x":0.336592,"y":0.20326,"z":-0.005232,"visibility":1},"left_elbow":{"x":0.726146,"y":0.304618,"z":-0.140796,"visibility":0.9985},"right_elbow":{"x":0.30938,"y":0.362951,"z":0.095178,"visibility":0.9367},"left_wrist":{"x":0.591331,"y":0.376493,"z":-0.232032,"visibility":0.9925},"right_wrist":{"x":0.315582,"y":0.511944,"z":-0.021247,"visibility":0.9276},"left_pinky":{"x":0.553167,"y":0.381347,"z":-0.279749,"visibility":0.9767},"right_pinky":{"x":0.305804,"y":0.553211,"z":-0.061387,"visibility":0.8828},"left_index":{"x":0.545345,"y":0.366911,"z":-0.273401,"visibility":0.9752},"right_index":{"x":0.320427,"y":0.556942,"z":-0.117962,"visibility":0.883},"left_thumb":{"x":0.553709,"y":0.36392,"z":-0.224455,"visibility":0.9685},"right_thumb":{"x":0.326498,"y":0.54273,"z":-0.045797,"visibility":0.8802},"left_hip":{"x":0.519122,"y":0.485818,"z":-0.058162,"visibility":0.9996},"right_hip":{"x":0.386628,"y":0.489331,"z":0.057752,"visibility":0.9993},"left_knee":{"x":0.522612,"y":0.714919,"z":-0.022886,"visibility":0.9891},"right_knee":{"x":0.363296,"y":0.71836,"z":0.094103,"visibility":0.9737},"left_ankle":{"x":0.520065,"y":0.918333,"z":0.14909,"visibility":0.9784},"right_ankle":{"x":0.336551,"y":0.911645,"z":0.278111,"visibility":0.9648},"left_heel":{"x":0.521447,"y":0.934749,"z":0.1495,"visibility":0.622},"right_heel":{"x":0.351699,"y":0.929856,"z":0.282412,"visibility":0.7689},"left_foot_index":{"x":0.473993,"y":0.988302,"z":-0.098813,"visibility":0.9401},"right_foot_index":{"x":0.271728,"y":0.980153,"z":0.077566,"visibility":0.946}},"worldLandmarks":{"nose":{"x":-0.021371,"y":-0.632236,"z":-0.224976,"visibility":1},"left_eye_inner":{"x":-0.007462,"y":-0.667852,"z":-0.215698,"visibility":1},"left_eye":{"x":-0.007097,"y":-0.667876,"z":-0.215088,"visibility":1},"left_eye_outer":{"x":-0.007371,"y":-0.668347,"z":-0.21521,"visibility":1},"right_eye_inner":{"x":-0.038432,"y":-0.664916,"z":-0.208374,"visibility":1},"right_eye":{"x":-0.038218,"y":-0.665418,"z":-0.209351,"visibility":1},"right_eye_outer":{"x":-0.03836,"y":-0.666877,"z":-0.208374,"visibility":1},"left_ear":{"x":0.065061,"y":-0.66461,"z":-0.125,"visibility":0.9999},"right_ear":{"x":-0.077297,"y":-0.660012,"z":-0.102417,"visibility":0.9999},"mouth_left":{"x":0.008568,"y":-0.613091,"z":-0.191406,"visibility":1},"mouth_right":{"x":-0.032369,"y":-0.609524,"z":-0.184326,"visibility":1},"left_shoulder":{"x":0.170824,"y":-0.50177,"z":-0.078125,"visibility":1},"right_shoulder":{"x":-0.143366,"y":-0.478968,"z":-0.044067,"visibility":1},"left_elbow":{"x":0.323081,"y":-0.318387,"z":-0.096924,"visibility":0.9985},"right_elbow":{"x":-0.171518,"y":-0.219105,"z":-0.012955,"visibility":0.9367},"left_wrist":{"x":0.19843,"y":-0.204458,"z":-0.17041,"visibility":0.9925},"right_wrist":{"x":-0.168883,"y":0.025662,"z":-0.090027,"visibility":0.9276},"left_pinky":{"x":0.158345,"y":-0.155566,"z":-0.197876,"visibility":0.9767},"right_pinky":{"x":-0.160486,"y":0.106226,"z":-0.102173,"visibility":0.8828},"left_index":{"x":0.1112,"y":-0.181574,"z":-0.200562,"visibility":0.9752},"right_index":{"x":-0.144454,"y":0.100564,"z":-0.128662,"visibility":0.883},"left_thumb":{"x":0.171687,"y":-0.205703,"z":-0.16748,"visibility":0.9685},"right_thumb":{"x":-0.153861,"y":0.040782,"z":-0.10144,"visibility":0.8802},"left_hip":{"x":0.108193,"y":0.003005,"z":-0.018402,"visibility":0.9996},"right_hip":{"x":-0.108885,"y":-0.003298,"z":0.019119,"visibility":0.9993},"left_knee":{"x":0.079535,"y":0.407659,"z":-0.028641,"visibility":0.9891},"right_knee":{"x":-0.110001,"y":0.393958,"z":0.032776,"visibility":0.9737},"left_ankle":{"x":0.120957,"y":0.761952,"z":0.066345,"visibility":0.9784},"right_ankle":{"x":-0.137035,"y":0.745975,"z":0.132202,"visibility":0.9648},"left_heel":{"x":0.126046,"y":0.806642,"z":0.06781,"visibility":0.622},"right_heel":{"x":-0.143124,"y":0.790882,"z":0.135254,"visibility":0.7689},"left_foot_index":{"x":0.102764,"y":0.874163,"z":-0.047607,"visibility":0.9401},"right_foot_index":{"x":-0.205405,"y":0.84081,"z":0.025192,"visibility":0.946}}}];
+
+  inputArea.value = JSON.stringify(sampleData, null, 2);
+  document.getElementById('convertBtn').disabled = false;
+  setStatus('Sample loaded — click Convert', 'success');
+  showToast('📄', 'Sample MediaPipe pose loaded');
+});
+
+// Status
+function setStatus(msg, type) {
+  document.getElementById('statusText').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'info-dot';
+  if (type === 'success') dot.classList.add('success');
+  if (type === 'error') dot.classList.add('error');
+}
+
+// Toast
+function showToast(icon, msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+
+/* ── START ── */
+function start() {
+  initThree();
+  loadModelAndTPose();
+}
+
+window.addEventListener('DOMContentLoaded', start);
+if (document.readyState !== 'loading') start();
+
+})();
+</script>
+
+</body>
+</html>
